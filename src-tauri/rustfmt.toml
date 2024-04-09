@@ -1,0 +1,15 @@
+comment_width = 100
+edition = "2021"
+format_code_in_doc_comments = true
+format_strings = true
+group_imports = "StdExternalCrate"
+imports_granularity = "Crate"
+normalize_comments = true
+normalize_doc_attributes = true
+wrap_comments = true
+unstable_features = true
+max_width = 80
+reorder_impl_items = true
+spaces_around_ranges = true
+format_macro_matchers = true
+overflow_delimited_expr = true

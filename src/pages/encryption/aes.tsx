@@ -1,5 +1,5 @@
 import { Button, Col, Flex, Input, Row, Select, Space } from "antd";
-import { aesKeys } from "../../api/keys";
+import { invoke } from "@tauri-apps/api/tauri";
 import { useState } from "react";
 import { valueType } from "antd/es/statistic/utils";
 const { TextArea } = Input;
@@ -16,8 +16,8 @@ const AesEncryption = () => {
 
 	const action = async () => {
 		setGenerating(true);
-		const data = await aesKeys(keySize);
-		setKey(data.data["key"]);
+		const data: string = await invoke("generate_aes", { keySize: keySize });
+		setKey(data);
 		setGenerating(false);
 	};
 
@@ -55,6 +55,13 @@ const AesEncryption = () => {
 							generate
 						</Button>
 					</Space.Compact>
+					<TextArea
+						showCount
+						autoSize={{ maxRows: 6, minRows: 4 }}
+						onChange={onChange}
+						size="large"
+						placeholder="output cipher"
+					/>
 				</Flex>
 			</Col>
 			<Col span={5}>col-18 col-push-6</Col>
