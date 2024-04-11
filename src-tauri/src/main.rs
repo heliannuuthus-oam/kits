@@ -8,6 +8,7 @@ fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             crypto::aes::generate_aes,
+            crypto::aes::generate_iv,
             crypto::ed25519::generate_ed25519,
             crypto::ecc::generate_ecc,
             crypto::rsa::generate_rsa,

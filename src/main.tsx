@@ -12,6 +12,7 @@ createRoot(document.getElementById("root")!).render(
 					token: {
 						colorLink: "#000",
 						colorPrimaryActive: "#000",
+						borderRadius: 5,
 					},
 				}}
 			>

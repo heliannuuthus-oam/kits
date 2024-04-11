@@ -1,46 +1,28 @@
 import "./App.css";
 
+import { Flex, Layout } from "antd";
 import React from "react";
-import { Layout, Flex } from "antd";
-import { Sider } from "./components/Sider";
 import { Content } from "./components/Content";
-
-const { Header } = Layout;
-
-const headerStyle: React.CSSProperties = {
-	textAlign: "center",
-	height: 64,
-	paddingInline: 48,
-	lineHeight: "64px",
-	backgroundColor: "#fff",
-};
-
-const contentStyle: React.CSSProperties = {
-	textAlign: "center",
-	minHeight: 520,
-	maxHeight: "100vh",
-	backgroundColor: "#fff",
-};
+import { Sider } from "./components/Sider";
 
 const siderStyle: React.CSSProperties = {
 	textAlign: "center",
 	lineHeight: "120px",
 	backgroundColor: "#fff",
-};
-
-const layoutStyle = {
-	overflow: "hidden",
+	overflow: "auto",
+	height: "100vh",
+	position: "fixed",
+	left: 0,
+	top: 0,
+	bottom: 0,
 };
 
 const App: React.FC = () => (
 	<Flex>
-		<Layout style={layoutStyle}>
+		<Layout hasSider>
 			<Sider
 				breakpoint="lg"
 				collapsedWidth="0"
-				onBreakpoint={(broken) => {
-					console.log(broken);
-				}}
 				trigger={null}
 				onCollapse={(collapsed, type) => {
 					console.log(collapsed, type);
@@ -49,8 +31,7 @@ const App: React.FC = () => (
 				width="25%"
 			/>
 			<Layout>
-				<Header style={headerStyle}>Header</Header>
-				<Content style={contentStyle} />
+				<Content style={{ marginLeft: "25%", height: "100vh" }} />
 			</Layout>
 		</Layout>
 	</Flex>
