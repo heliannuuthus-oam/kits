@@ -36,6 +36,15 @@ module.exports = {
 	plugins: ["@typescript-eslint", "react"],
 	ignorePatterns: [".eslintrc.cjs", "vite.config.ts", "dist"],
 	rules: {
+		"@typescript-eslint/ban-types": [
+			"error",
+			{
+				extendDefaults: true,
+				types: {
+					"{}": false,
+				},
+			},
+		],
 		"@typescript-eslint/prefer-nullish-coalescing": "off",
 		"@typescript-eslint/no-unused-vars": [
 			"error",
@@ -56,7 +65,7 @@ module.exports = {
 		],
 		semi: "error",
 		"prefer-const": "error",
-		indent: ["error", "tab"],
+		indent: ["error", "tab", { SwitchCase: 1 }],
 		"prettier/prettier": [
 			"error",
 			{

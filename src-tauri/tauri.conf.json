@@ -15,13 +15,18 @@
 			"shell": {
 				"all": false,
 				"open": true
-			}
+			},
+      "clipboard": {
+        "all": true, 
+        "writeText": true,
+        "readText": true
+      }
 		},
 		"windows": [
 			{
 				"title": "kits",
-				"width": 800,
-				"height": 600
+				"width": 1280,
+				"height": 888
 			}
 		],
 		"security": {

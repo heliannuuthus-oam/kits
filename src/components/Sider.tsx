@@ -69,7 +69,7 @@ export const Sider = ({ ...props }: SiderProps) => {
 			<AntdSider {...props}>
 				<Menu
 					mode="inline"
-					style={{ width: 256 }}
+					style={{ width: 256, height: "100%" }}
 					selectedKeys={selectedKeys}
 					items={menuItems}
 				/>
