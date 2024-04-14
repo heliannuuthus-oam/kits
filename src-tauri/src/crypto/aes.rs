@@ -98,14 +98,14 @@ pub fn generate_iv(size: usize) -> Result<String> {
     let mut rng = rand::thread_rng();
     let mut iv: Vec<u8> = vec![0; size];
     rng.fill_bytes(&mut iv);
-    Ok(base64ct::Base64::encode_string(&iv))
+    Ok(Base64::encode_string(&iv))
 }
 #[tauri::command]
 pub fn generate_aes(key_size: usize) -> Result<String> {
     let mut rng = rand::thread_rng();
     let mut secret: Vec<u8> = vec![0; key_size / 8];
     rng.fill_bytes(&mut secret);
-    Ok(base64ct::Base64::encode_string(&secret))
+    Ok(Base64::encode_string(&secret))
 }
 
 #[tauri::command]

@@ -1,5 +1,15 @@
 import { invoke } from "@tauri-apps/api";
-import { Button, Col, Input, Row, Select, Space, Typography } from "antd";
+import {
+	Button,
+	Col,
+	Form,
+	FormRule,
+	Input,
+	Row,
+	Select,
+	Space,
+	Typography,
+} from "antd";
 import { valueType } from "antd/es/statistic/utils";
 import { useState } from "react";
 
@@ -25,156 +35,195 @@ const AesInput = ({
 }: {
 	setCiphertext: (ciphertext: valueType) => void;
 }) => {
-	const [mode, setMode] = useState<Mode>(Mode.CBC);
-	const [padding, setPaddding] = useState<Padding>(Padding.Pkcs7Padding);
+	const [form] = Form.useForm<{
+		iv?: string;
+		key: string;
+		padding: Padding;
+		mode: Mode;
+		aad?: string;
+	}>();
+
 	const [keySize, setKeySize] = useState<number>(128);
-	const [key, setKey] = useState<valueType>();
-	const [iv, setIv] = useState<valueType>();
-	const [aad, setAad] = useState<valueType>();
-	const [plaintext, setPlaintext] = useState<valueType>();
+	const initialValues = { mode: Mode.CBC, padding: Padding.Pkcs7Padding };
+
+	const mode = Form.useWatch("mode", form);
+
+	const keyValidator: FormRule[] = [
+		{ required: true, message: "key is required" },
+		{
+			len: keySize === 128 ? 24 : 48,
+			message: `iv must be a base64 encoded character of ${
+				keySize === 128 ? 24 : 48
+			} length`,
+		},
+	];
+	const ivValidator: FormRule[] = [
+		{ required: true, message: "iv is required" },
+		{
+			len: mode && mode === Mode.GCM ? 18 : 24,
+
+			message: `iv must be a base64 encoded character of  ${
+				mode && mode === Mode.GCM ? 18 : 24
+			} length`,
+		},
+	];
+
 	const generateKey = async () => {
-		const data: string = await invoke("generate_aes", { keySize: keySize });
-		setKey(data);
+		const data: string = await invoke<string>("generate_aes", {
+			keySize: keySize,
+		});
+		form.setFieldsValue({ key: data });
 	};
 
 	const generateIv = async () => {
-		const data: string = await invoke("generate_iv", {
+		const data = await invoke<string>("generate_iv", {
 			size: mode === Mode.CBC ? 16 : 12,
 		});
-		setIv(data);
+		form.setFieldsValue({ iv: data });
 	};
 
 	const encrypt = async () => {
-		const ciphertext = await invoke<string>("encrypt_aes", {
-			mode: mode,
-			key: key,
-			plaintext: plaintext,
-			padding: padding,
-			iv: iv,
-		});
+		console.log("form: ", form.getFieldsValue());
+		const ciphertext = await invoke<string>(
+			"encrypt_aes",
+			form.getFieldsValue()
+		);
 		setCiphertext(ciphertext);
 	};
 
-	const renderExtract = (mode: Mode) => {
+	const onValuesChange = (value: object) => {
+		if (Object.keys(value).indexOf("mode") !== -1) {
+			form.setFieldsValue({ key: undefined, iv: undefined });
+		}
+	};
+
+	const renderExtract = (mode: Mode): React.ReactElement => {
 		switch (mode) {
 			case Mode.CBC:
 				return (
-					<Space.Compact size={size} style={{ width: "100%" }}>
-						<Input
-							placeholder="input iv"
-							value={iv}
-							onChange={(e) => setIv(e.target.value)}
-						/>
-						<Button style={{ margin: 0 }} onClick={generateIv}>
-							generate iv
-						</Button>
-					</Space.Compact>
-				);
-			case Mode.ECB:
-				return <></>;
-			case Mode.GCM:
-				return (
-					<Space
-						direction="vertical"
-						size="middle"
-						style={{ display: "flex", width: "100%" }}
-					>
+					<Form.Item key="cbc_iv">
 						<Space.Compact size={size} style={{ width: "100%" }}>
-							<Input
-								placeholder="input iv"
-								value={iv}
-								onChange={(e) => setIv(e.target.value)}
-							/>
+							<Form.Item hasFeedback noStyle name="iv" rules={ivValidator}>
+								<Input placeholder="input iv" />
+							</Form.Item>
 							<Button style={{ margin: 0 }} onClick={generateIv}>
 								generate iv
 							</Button>
 						</Space.Compact>
-						<Space.Compact size={size} style={{ width: "100%" }}>
-							<Input
-								placeholder="input aad"
-								value={aad}
-								onChange={(e) => setAad(e.target.value)}
-							/>
-						</Space.Compact>
-					</Space>
+					</Form.Item>
 				);
+
+			case Mode.GCM:
+				return (
+					<>
+						<Form.Item key="gcm_iv" hasFeedback>
+							<Space.Compact size={size} style={{ width: "100%" }}>
+								<Form.Item noStyle name="iv" rules={ivValidator}>
+									<Input placeholder="input iv" />
+								</Form.Item>
+								<Button style={{ margin: 0 }} onClick={generateIv}>
+									generate iv
+								</Button>
+							</Space.Compact>
+						</Form.Item>
+						<Form.Item key="gcm_aad" name="aad">
+							<Input placeholder="input aad" />
+						</Form.Item>
+					</>
+				);
+			default:
+				return <></>;
 		}
 	};
 
 	return (
-		<Space
-			direction="vertical"
-			size="middle"
-			style={{ display: "flex", width: "100%", padding: 24 }}
+		<Form
+			form={form}
+			onValuesChange={onValuesChange}
+			initialValues={initialValues}
+			layout="vertical"
+			size={size}
+			style={{ width: "100%", padding: 24 }}
+			validateTrigger="onBlur"
 		>
-			<Row justify="space-between" align="middle">
-				<Col>
-					<Title style={{ margin: 0 }} level={5}>
-						input:
-					</Title>
-				</Col>
-				<Col>
+			<Form.Item key="basic">
+				<Row justify="space-between" align="middle">
+					<Col>
+						<Title style={{ margin: 0 }} level={5}>
+							input:
+						</Title>
+					</Col>
+					<Col>
+						<Form.Item noStyle name="mode">
+							<Select
+								size={size}
+								options={[
+									{ value: Mode.ECB, label: <span>ECB</span> },
+									{ value: Mode.CBC, label: <span>CBC</span> },
+									{ value: Mode.GCM, label: <span>GCM</span> },
+								]}
+							/>
+						</Form.Item>
+					</Col>
+					<Col>
+						<Form.Item noStyle name="padding">
+							<Select
+								size={size}
+								options={[
+									{
+										value: Padding.Pkcs7Padding,
+										label: <span>Pkcs7Padding</span>,
+									},
+									{ value: Padding.NoPadding, label: <span>NoPadding</span> },
+								]}
+							/>
+						</Form.Item>
+					</Col>
+					<Col>
+						<Button
+							color="green"
+							size={size}
+							style={{ margin: 0 }}
+							onClick={encrypt}
+						>
+							encrypt
+						</Button>
+					</Col>
+				</Row>
+			</Form.Item>
+			<Form.Item key="key">
+				<Space.Compact size={size} style={{ width: "100%" }}>
+					<Form.Item noStyle name="key" hasFeedback rules={keyValidator}>
+						<Input placeholder="input encryption key" />
+					</Form.Item>
 					<Select
-						size={size}
-						defaultValue={mode}
-						onChange={setMode}
+						defaultValue={keySize}
+						onChange={setKeySize}
+						style={{ width: 150 }}
 						options={[
-							{ value: Mode.ECB, label: <span>ECB</span> },
-							{ value: Mode.CBC, label: <span>CBC</span> },
-							{ value: Mode.GCM, label: <span>GCM</span> },
+							{ value: 128, label: <span>128bit</span> },
+							{ value: 256, label: <span>256bit</span> },
 						]}
 					/>
-				</Col>
-				<Col>
-					<Select
-						size={size}
-						defaultValue={padding}
-						onChange={setPaddding}
-						options={[
-							{ value: Padding.Pkcs7Padding, label: <span>Pkcs7Padding</span> },
-							{ value: Padding.NoPadding, label: <span>NoPadding</span> },
-						]}
-					/>
-				</Col>
-				<Col>
-					<Button
-						color="green"
-						size={size}
-						style={{ margin: 0 }}
-						onClick={encrypt}
-					>
-						encrypt
+					<Button style={{ margin: 0 }} onClick={generateKey}>
+						generate key
 					</Button>
-				</Col>
-			</Row>
-			<Space.Compact size={size} style={{ width: "100%" }}>
-				<Input
-					placeholder="input encryption key"
-					value={key}
-					onChange={(e) => setKey(e.target.value)}
-				/>
-				<Select
-					defaultValue={keySize}
-					onChange={setKeySize}
-					style={{ width: 150 }}
-					options={[
-						{ value: 128, label: <span>128bit</span> },
-						{ value: 256, label: <span>256bit</span> },
-					]}
-				/>
-				<Button style={{ margin: 0 }} onClick={generateKey}>
-					generate key
-				</Button>
-			</Space.Compact>
+				</Space.Compact>
+			</Form.Item>
 			{renderExtract(mode)}
 
-			<TextArea
-				style={{ width: "100%", padding: "20, 40" }}
-				value={plaintext}
-				autoSize={{ minRows: 29, maxRows: 29 }}
-				onChange={(e) => setPlaintext(e.target.value)}
-			/>
-		</Space>
+			<Form.Item key="plaintext">
+				<div
+					style={{
+						height: 590,
+					}}
+				>
+					<Form.Item noStyle name="plaintext" rules={[{ required: true }]}>
+						<TextArea style={{ height: "100%", resize: "none" }} />
+					</Form.Item>
+				</div>
+			</Form.Item>
+		</Form>
 	);
 };
 
