@@ -1,5 +1,4 @@
 import { Col, Row } from "antd";
-import { valueType } from "antd/es/statistic/utils";
 import { useRef } from "react";
 import AesInput from "../../components/aes/Input";
 import AesOutput, { AesOutputRef } from "../../components/aes/Output";
@@ -24,7 +23,7 @@ export enum Padding {
 const AesEncryption = () => {
 	const outputEl = useRef<AesOutputRef>(null);
 
-	const setCiphertext = (ciphertext: valueType) => {
+	const setCiphertext = (ciphertext: Uint8Array) => {
 		outputEl.current?.setCiphertext(ciphertext);
 	};
 

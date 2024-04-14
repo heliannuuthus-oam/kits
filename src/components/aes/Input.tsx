@@ -10,7 +10,6 @@ import {
 	Space,
 	Typography,
 } from "antd";
-import { valueType } from "antd/es/statistic/utils";
 import { useState } from "react";
 
 const { TextArea } = Input;
@@ -33,7 +32,7 @@ const size = "middle";
 const AesInput = ({
 	setCiphertext,
 }: {
-	setCiphertext: (ciphertext: valueType) => void;
+	setCiphertext: (ciphertext: Uint8Array) => void;
 }) => {
 	const [form] = Form.useForm<{
 		iv?: string;
@@ -84,7 +83,7 @@ const AesInput = ({
 
 	const encrypt = async () => {
 		console.log("form: ", form.getFieldsValue());
-		const ciphertext = await invoke<string>(
+		const ciphertext = await invoke<Uint8Array>(
 			"encrypt_aes",
 			form.getFieldsValue()
 		);
@@ -181,6 +180,7 @@ const AesInput = ({
 					</Col>
 					<Col>
 						<Button
+							htmlType="submit"
 							color="green"
 							size={size}
 							style={{ margin: 0 }}
