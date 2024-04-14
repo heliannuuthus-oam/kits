@@ -13,6 +13,10 @@ fn main() {
             crypto::ecc::generate_ecc,
             crypto::rsa::generate_rsa,
             crypto::aes::encrypt_aes,
+            helper::codec::base64_encode,
+            helper::codec::base64_decode,
+            helper::codec::hex_encode,
+            helper::codec::hex_decode
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

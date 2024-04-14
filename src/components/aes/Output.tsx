@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api";
 import { writeText } from "@tauri-apps/api/clipboard";
 import {
 	Button,
@@ -21,12 +22,76 @@ enum Formatter {
 }
 
 export type AesOutputRef = {
-	setCiphertext: (ciphertext: valueType) => void;
+	setCiphertext: (ciphertext: Uint8Array) => void;
 };
 
 export type AesOutputProps = {};
 
 const size = "middle";
+
+const encode = async (
+	format: Formatter,
+	input: Uint8Array
+): Promise<string> => {
+	console.log("encoding", Array.from(input));
+
+	switch (format) {
+		case Formatter.Base64:
+			return new Promise<string>((resovle, rejects) => {
+				invoke<string>("base64_encode", {
+					input: Array.from(input),
+					unpadded: false,
+					urlsafety: false,
+				})
+					.then(resovle)
+					.catch(rejects);
+			});
+		case Formatter.Hex:
+			return new Promise<string>((resovle, rejects) => {
+				invoke<string>("hex_encode", {
+					input: Array.from(input),
+					uppercase: false,
+				})
+					.then(resovle)
+					.catch(rejects);
+			});
+		case Formatter.Bytes:
+			return new Promise<string>((resovle, _) => {
+				resovle(input.join(" "));
+			});
+	}
+};
+const decode = async (
+	format: Formatter,
+	input: string
+): Promise<Uint8Array> => {
+	console.log("decoding", input);
+	switch (format) {
+		case Formatter.Base64:
+			return new Promise((resolve, rejects) =>
+				invoke<Uint8Array>("base64_decode", {
+					input: input,
+					unpadded: false,
+					urlsafety: false,
+				})
+					.then(resolve)
+					.catch(rejects)
+			);
+		case Formatter.Hex:
+			return new Promise((resolve, rejects) =>
+				invoke<Uint8Array>("hex_decode", {
+					input: input,
+					uppercase: false,
+				})
+					.then(resolve)
+					.catch(rejects)
+			);
+		case Formatter.Bytes:
+			return new Promise<Uint8Array>((resovle) =>
+				resovle(Uint8Array.from(input.split(" ").map((letter) => +letter)))
+			);
+	}
+};
 
 const AesOutput = forwardRef<AesOutputRef, AesOutputProps>((_props, ref) => {
 	const [format, setFormat] = useState<Formatter>(Formatter.Base64);
@@ -39,10 +104,20 @@ const AesOutput = forwardRef<AesOutputRef, AesOutputProps>((_props, ref) => {
 	};
 
 	useImperativeHandle(ref, () => ({
-		setCiphertext(c: valueType) {
-			setCiphertext(c);
+		setCiphertext(c: Uint8Array) {
+			encode(format, c)
+				.then(setCiphertext)
+				.catch((err) => console.log(err));
 		},
 	}));
+
+	const changeFormat = async (event: RadioChangeEvent) => {
+		decode(format, ciphertext + "")
+			.then((bytes) => encode(event.target.value, bytes).then(setCiphertext))
+			.catch((err) => console.log(err));
+
+		setFormat(event.target.value);
+	};
 
 	return (
 		<Space
@@ -65,9 +140,7 @@ const AesOutput = forwardRef<AesOutputRef, AesOutputProps>((_props, ref) => {
 							{ value: Formatter.Base64, label: <span>base64</span> },
 							{ value: Formatter.Hex, label: <span>hex</span> },
 						]}
-						onChange={({ target: { value } }: RadioChangeEvent) => {
-							setFormat(value);
-						}}
+						onChange={changeFormat}
 						value={format}
 						optionType="button"
 					/>
