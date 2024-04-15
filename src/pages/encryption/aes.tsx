@@ -23,14 +23,14 @@ export enum Padding {
 const AesEncryption = () => {
 	const outputEl = useRef<AesOutputRef>(null);
 
-	const setCiphertext = (ciphertext: Uint8Array) => {
-		outputEl.current?.setCiphertext(ciphertext);
+	const setOutput = (ciphertext: Uint8Array) => {
+		outputEl.current?.setOutput(ciphertext);
 	};
 
 	return (
 		<Row>
 			<Col span={12}>
-				<AesInput setCiphertext={setCiphertext} />
+				<AesInput setOutput={setOutput} />
 			</Col>
 			<Col span={12}>
 				<AesOutput ref={outputEl} />

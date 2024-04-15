@@ -7,7 +7,7 @@ use aes::{
     Aes128, Aes256,
 };
 use aes_gcm::{
-    aead::{Aead, Payload},
+    aead::{Aead, AeadMutInPlace, Payload},
     AesGcm, Nonce,
 };
 use anyhow::Context;
@@ -33,8 +33,8 @@ pub fn generate_aes(key_size: usize) -> Result<String> {
     Ok(Base64::encode_string(&key))
 }
 
-#[tracing::instrument]
 #[tauri::command]
+#[tracing::instrument(level = "debug")]
 pub fn encrypt_aes(
     mode: EncryptionMode,
     key: &str,
@@ -47,8 +47,8 @@ pub fn encrypt_aes(
     encrypt_or_decrypt_aes(mode, key, input, padding, iv, aad, true)
 }
 
-#[tracing::instrument]
 #[tauri::command]
+#[tracing::instrument(level = "debug")]
 pub fn decrypt_aes(
     mode: EncryptionMode,
     key: &str,
@@ -98,29 +98,6 @@ fn encrypt_or_decrypt_aes(
         }
     };
     Ok(ciphertext)
-}
-
-fn build_aes_gcm_cryptor<C>(
-    key: &[u8],
-    input: &[u8],
-    aad: Option<&str>,
-) -> Result<AesGcm<C, typenum::U12>>
-where
-    C: BlockEncrypt
-        + KeyInit
-        + BlockSizeUser<BlockSize = typenum::U16>
-        + BlockDecrypt,
-{
-    let mut payload: Payload = input.into();
-    let association = &if let Some(association) = aad {
-        Base64::decode_vec(association)
-            .context("decode aad failed".to_string())?
-    } else {
-        vec![]
-    };
-    payload.aad = association;
-    Ok(AesGcm::<C, typenum::U12>::new_from_slice(key)
-        .context("construct aes_gcm_cipher failed")?)
 }
 
 fn encrypt_or_decrypt_aes_inner<C>(
@@ -174,22 +151,23 @@ where
             let cc = Base64::decode_vec(iv.unwrap())
                 .context("decode iv failed".to_string())?;
             let nonce = Nonce::from_slice(&cc);
-            let mut payload: Payload = plaintext.into();
+            let mut payload = Vec::from(plaintext);
             let association = &if let Some(association) = aad {
-                Base64::decode_vec(association)
-                    .context("decode aad failed".to_string())?
+                association.as_bytes().to_vec()
             } else {
                 vec![]
             };
-            payload.aad = association;
-            let c = build_aes_gcm_cryptor::<C>(key, plaintext, aad)?;
-            Ok(if for_encryption {
-                c.encrypt(nonce, payload)
+
+            let mut c = AesGcm::<C, typenum::U12>::new_from_slice(key)
+                .context("construct aes_gcm_cipher failed")?;
+            if for_encryption {
+                c.encrypt_in_place(nonce, association, &mut payload)
                     .context("invoke gcm encrypt failed")?
             } else {
-                c.decrypt(nonce, payload)
+                c.decrypt_in_place(nonce, association, &mut payload)
                     .context("invoke gcm decrypt failed")?
-            })
+            };
+            Ok(payload)
         }
     }
 }
@@ -207,10 +185,10 @@ where
     buf[.. pt_len].copy_from_slice(plaintext);
     let ciphertext = match padding {
         AesEncryptionPadding::Pkcs7Padding => {
-            c.encrypt_padded_mut::<Pkcs7>(&mut buf, pt_len)
+            c.encrypt_padded_b2b_mut::<Pkcs7>(plaintext, &mut buf)
         }
         AesEncryptionPadding::NoPadding => {
-            c.encrypt_padded_mut::<NoPadding>(&mut buf, pt_len)
+            c.encrypt_padded_b2b_mut::<NoPadding>(plaintext, &mut buf)
         }
     }
     .context("aes encrypt failed")?;
@@ -230,10 +208,10 @@ where
     buf[.. pt_len].copy_from_slice(ciphertext);
     let ciphertext = match padding {
         AesEncryptionPadding::Pkcs7Padding => {
-            c.decrypt_padded_mut::<Pkcs7>(&mut buf)
+            c.decrypt_padded_b2b_mut::<Pkcs7>(ciphertext, &mut buf)
         }
         AesEncryptionPadding::NoPadding => {
-            c.decrypt_padded_mut::<NoPadding>(&mut buf)
+            c.decrypt_padded_b2b_mut::<NoPadding>(ciphertext, &mut buf)
         }
     }
     .context("aes decrypt failed")?;

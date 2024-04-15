@@ -65,7 +65,6 @@ module.exports = {
 		],
 		semi: "error",
 		"prefer-const": "error",
-		indent: ["error", "tab", { SwitchCase: 1 }],
 		"prettier/prettier": [
 			"error",
 			{

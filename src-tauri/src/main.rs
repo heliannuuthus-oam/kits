@@ -1,18 +1,24 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use anyhow::Context;
+use helper::errors::Result;
+use tracing_subscriber::fmt::writer::MakeWriterExt;
+
 mod crypto;
 mod helper;
 
-fn main() {
-    let file_appender = tracing_appender::rolling::hourly("./log", "app.log");
+fn main() -> Result<()> {
+    let file_appender = tracing_appender::rolling::daily("./log", "app.log");
 
-    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    let (std_writer, _guard) =
+        tracing_appender::non_blocking(std::io::stdout());
+    let (file_writer, _guard) = tracing_appender::non_blocking(file_appender);
 
     let subscriber = tracing_subscriber::fmt()
-        .with_max_level(tracing::level_filters::LevelFilter::INFO)
+        .with_max_level(tracing::level_filters::LevelFilter::DEBUG)
         .compact()
-        .with_writer(non_blocking)
+        .with_writer(std_writer.and(file_writer))
         .with_file(true)
         .with_line_number(true)
         .with_thread_ids(true)
@@ -20,7 +26,7 @@ fn main() {
         .finish();
     // use that subscriber to process traces emitted after this point
     tracing::subscriber::set_global_default(subscriber)
-        .expect("initial tracing subscriber failed");
+        .context("initial tracing subscriber failed")?;
 
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -39,5 +45,6 @@ fn main() {
             helper::codec::string_decode
         ])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .context("error while running tauri application")?;
+    Ok(())
 }
