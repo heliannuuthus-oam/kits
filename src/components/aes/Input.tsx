@@ -1,7 +1,9 @@
+import { DownOutlined } from "@ant-design/icons";
 import { invoke } from "@tauri-apps/api";
 import {
 	Button,
 	Col,
+	Dropdown,
 	Form,
 	FormRule,
 	Input,
@@ -10,7 +12,8 @@ import {
 	Space,
 	Typography,
 } from "antd";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Codec, CodecRef, Formatter, decode } from "../codec";
 
 const { TextArea } = Input;
 
@@ -29,22 +32,26 @@ enum Padding {
 
 const size = "middle";
 
+type FormInput = {
+	iv?: string;
+	key: string;
+	padding: Padding;
+	mode: Mode;
+	aad?: string;
+	input: string;
+	format: Formatter;
+};
+
 const AesInput = ({
-	setCiphertext,
+	setOutput,
 }: {
-	setCiphertext: (ciphertext: Uint8Array) => void;
+	setOutput: (ciphertext: Uint8Array) => void;
 }) => {
-	const [form] = Form.useForm<{
-		iv?: string;
-		key: string;
-		padding: Padding;
-		mode: Mode;
-		aad?: string;
-	}>();
-
+	const [form] = Form.useForm<FormInput>();
 	const [keySize, setKeySize] = useState<number>(128);
+	const [operation, setOperation] = useState<string>("encrypt");
 	const initialValues = { mode: Mode.CBC, padding: Padding.Pkcs7Padding };
-
+	const codecEl = useRef<CodecRef>(null);
 	const mode = Form.useWatch("mode", form);
 
 	const keyValidator: FormRule[] = [
@@ -56,6 +63,7 @@ const AesInput = ({
 			} length`,
 		},
 	];
+
 	const ivValidator: FormRule[] = [
 		{ required: true, message: "iv is required" },
 		{
@@ -64,6 +72,15 @@ const AesInput = ({
 			message: `iv must be a base64 encoded character of  ${
 				mode && mode === Mode.GCM ? 18 : 24
 			} length`,
+		},
+	];
+
+	const inputValidator: FormRule[] = [
+		{ required: true, message: "input is required" },
+		{
+			min: 1,
+
+			message: "message must not be empty",
 		},
 	];
 
@@ -81,13 +98,28 @@ const AesInput = ({
 		form.setFieldsValue({ iv: data });
 	};
 
-	const encrypt = async () => {
+	const encryptOrDecrypt = async () => {
 		console.log("form: ", form.getFieldsValue());
-		const ciphertext = await invoke<Uint8Array>(
-			"encrypt_aes",
-			form.getFieldsValue()
+		const input = await decode(
+			codecEl.current?.getFormat() || Formatter.Base64,
+			form.getFieldValue("input")
 		);
-		setCiphertext(ciphertext);
+
+		if (operation === "encrypt") {
+			invoke<Uint8Array>("encrypt_aes", {
+				...form.getFieldsValue(),
+				input,
+			})
+				.then(setOutput)
+				.catch(console.log);
+		} else {
+			invoke<Uint8Array>("decrypt_aes", {
+				...form.getFieldsValue(),
+				input,
+			})
+				.then(setOutput)
+				.catch(console.log);
+		}
 	};
 
 	const onValuesChange = (value: object) => {
@@ -157,9 +189,9 @@ const AesInput = ({
 							<Select
 								size={size}
 								options={[
-									{ value: Mode.ECB, label: <span>ECB</span> },
-									{ value: Mode.CBC, label: <span>CBC</span> },
-									{ value: Mode.GCM, label: <span>GCM</span> },
+									{ value: Mode.ECB, label: <span>AES_ECB</span> },
+									{ value: Mode.CBC, label: <span>AES_CBC</span> },
+									{ value: Mode.GCM, label: <span>AES_GCM</span> },
 								]}
 							/>
 						</Form.Item>
@@ -177,17 +209,6 @@ const AesInput = ({
 								]}
 							/>
 						</Form.Item>
-					</Col>
-					<Col>
-						<Button
-							htmlType="submit"
-							color="green"
-							size={size}
-							style={{ margin: 0 }}
-							onClick={encrypt}
-						>
-							encrypt
-						</Button>
 					</Col>
 				</Row>
 			</Form.Item>
@@ -212,13 +233,88 @@ const AesInput = ({
 			</Form.Item>
 			{renderExtract(mode)}
 
-			<Form.Item key="plaintext">
+			<Form.Item key="operation">
+				<Row justify="space-between" align="middle">
+					<Col>
+						<Codec
+							ref={codecEl}
+							props={{
+								size: size,
+								defaultValue: Formatter.UTF8,
+								options:
+									operation === "encrypt"
+										? [
+												{ value: Formatter.UTF8, label: <span>utf8</span> },
+												{ value: Formatter.Base64, label: <span>base64</span> },
+												{ value: Formatter.Hex, label: <span>hex</span> },
+											]
+										: [
+												{ value: Formatter.Base64, label: <span>base64</span> },
+												{ value: Formatter.Hex, label: <span>hex</span> },
+											],
+							}}
+							setInput={(input: string) =>
+								form.setFieldsValue({ input: input })
+							}
+							getInput={() => form.getFieldValue("input")}
+						/>
+					</Col>
+					<Col>
+						<Col>
+							<Space.Compact>
+								<Dropdown.Button
+									menu={{
+										items: [
+											{
+												label: (
+													<div
+														onClick={(_) => {
+															setOperation("encrypt");
+															codecEl.current?.setFormat(Formatter.UTF8);
+														}}
+													>
+														encrypt
+													</div>
+												),
+												key: "encrypt",
+											},
+											{
+												label: (
+													<div
+														onClick={(_) => {
+															setOperation("decrypt");
+															codecEl.current?.setFormat(Formatter.Base64);
+														}}
+													>
+														decrypt
+													</div>
+												),
+												key: "decrypt",
+											},
+										],
+									}}
+									trigger={["hover"]}
+									htmlType="submit"
+									size={size}
+									style={{ margin: 0 }}
+									onClick={encryptOrDecrypt}
+									icon={<DownOutlined />}
+								>
+									{operation}
+								</Dropdown.Button>
+							</Space.Compact>
+						</Col>
+					</Col>
+				</Row>
+			</Form.Item>
+
+			<Form.Item key="input">
 				<div
 					style={{
-						height: 590,
+						height: 560,
 					}}
 				>
-					<Form.Item noStyle name="plaintext" rules={[{ required: true }]}>
+					<Form.Item noStyle name="input" rules={inputValidator}>
 						<TextArea style={{ height: "100%", resize: "none" }} />
 					</Form.Item>
 				</div>
