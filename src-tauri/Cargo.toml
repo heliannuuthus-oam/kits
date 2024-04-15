@@ -5,6 +5,9 @@ description = "A Tauri App"
 authors = ["heliannuuthus"]
 edition = "2021"
 
+[profile.release]
+debug = true
+
 [build-dependencies]
 tauri-build = { version = "1", features = [] }
 [dependencies]
@@ -13,7 +16,8 @@ tauri-build = { version = "1", features = [] }
 tauri = { version = "1", features = ["clipboard-all", "shell-open", "tracing"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-anyhow = "1.0.81"
+anyhow = { version = "1.0.81", features = ["backtrace"] }
+
 thiserror = "1.0.58"
 rand = "0.8.5"
 serde_bytes = "0.11.14"

@@ -11,9 +11,10 @@ import {
 	Select,
 	Space,
 	Typography,
+	notification,
 } from "antd";
 import { useRef, useState } from "react";
-import { Codec, CodecRef, Formatter, decode } from "../codec";
+import { Codec, CodecRef, Formatter, decode } from "../Codec";
 
 const { TextArea } = Input;
 
@@ -53,6 +54,18 @@ const AesInput = ({
 	const initialValues = { mode: Mode.CBC, padding: Padding.Pkcs7Padding };
 	const codecEl = useRef<CodecRef>(null);
 	const mode = Form.useWatch("mode", form);
+	const [notifyApi, notifyContextHodler] = notification.useNotification({
+		stack: { threshold: 1 },
+	});
+
+	const notify = (description: string) => {
+		notifyApi.error({
+			message: `${operation} failed`,
+			description,
+			duration: 3,
+			placement: "bottomRight",
+		});
+	};
 
 	const keyValidator: FormRule[] = [
 		{ required: true, message: "key is required" },
@@ -67,10 +80,10 @@ const AesInput = ({
 	const ivValidator: FormRule[] = [
 		{ required: true, message: "iv is required" },
 		{
-			len: mode && mode === Mode.GCM ? 18 : 24,
+			len: mode && mode === Mode.GCM ? 16 : 24,
 
 			message: `iv must be a base64 encoded character of  ${
-				mode && mode === Mode.GCM ? 18 : 24
+				mode && mode === Mode.GCM ? 16 : 24
 			} length`,
 		},
 	];
@@ -100,26 +113,34 @@ const AesInput = ({
 
 	const encryptOrDecrypt = async () => {
 		console.log("form: ", form.getFieldsValue());
-		const input = await decode(
-			codecEl.current?.getFormat() || Formatter.Base64,
-			form.getFieldValue("input")
+		form.validateFields({ validateOnly: true }).then((_) =>
+			decode(
+				codecEl.current?.getFormat() || Formatter.Base64,
+				form.getFieldValue("input")
+			).then((input) => {
+				if (operation === "encrypt") {
+					invoke<Uint8Array>("encrypt_aes", {
+						...form.getFieldsValue(),
+						input,
+					})
+						.then(setOutput)
+						.catch((err: string) => {
+							notify(err);
+							setOutput(new Uint8Array());
+						});
+				} else {
+					invoke<Uint8Array>("decrypt_aes", {
+						...form.getFieldsValue(),
+						input,
+					})
+						.then(setOutput)
+						.catch((err: string) => {
+							notify(err);
+							setOutput(new Uint8Array());
+						});
+				}
+			})
 		);
-
-		if (operation === "encrypt") {
-			invoke<Uint8Array>("encrypt_aes", {
-				...form.getFieldsValue(),
-				input,
-			})
-				.then(setOutput)
-				.catch(console.log);
-		} else {
-			invoke<Uint8Array>("decrypt_aes", {
-				...form.getFieldsValue(),
-				input,
-			})
-				.then(setOutput)
-				.catch(console.log);
-		}
 	};
 
 	const onValuesChange = (value: object) => {
@@ -149,7 +170,7 @@ const AesInput = ({
 					<>
 						<Form.Item key="gcm_iv" hasFeedback>
 							<Space.Compact size={size} style={{ width: "100%" }}>
-								<Form.Item noStyle name="iv" rules={ivValidator}>
+								<Form.Item noStyle name="iv" rules={ivValidator} hasFeedback>
 									<Input placeholder="input iv" />
 								</Form.Item>
 								<Button style={{ margin: 0 }} onClick={generateIv}>
@@ -177,6 +198,7 @@ const AesInput = ({
 			style={{ width: "100%", padding: 24 }}
 			validateTrigger="onBlur"
 		>
+			{notifyContextHodler}
 			<Form.Item key="basic">
 				<Row justify="space-between" align="middle">
 					<Col>

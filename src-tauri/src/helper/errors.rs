@@ -14,12 +14,21 @@ pub enum Error {
     Internal(#[from] anyhow::Error),
 }
 
-// we must manually implement serde::Serialize
 impl serde::Serialize for Error {
     fn serialize<S>(&self, serializer: S) -> result::Result<S::Ok, S::Error>
     where
         S: serde::ser::Serializer,
     {
+        match self {
+            Error::Io(err) => tracing::warn!("io error: {:?}", err),
+            Error::Unsupported(err) => {
+                tracing::warn!("unsupported error: {:?}", err)
+            }
+            Error::Internal(err) => {
+                tracing::error!("internal error: {:?}", err);
+            }
+        }
+
         serializer.serialize_str(self.to_string().as_ref())
     }
 }

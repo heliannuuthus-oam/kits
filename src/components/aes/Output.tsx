@@ -2,7 +2,7 @@ import { writeText } from "@tauri-apps/api/clipboard";
 import { Button, Col, Input, Row, Space, Typography, message } from "antd";
 import { valueType } from "antd/es/statistic/utils";
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
-import { Codec, CodecRef, Formatter, encode } from "../codec";
+import { Codec, CodecRef, Formatter, encode } from "../Codec";
 const { Title } = Typography;
 const { TextArea } = Input;
 
@@ -16,7 +16,7 @@ const size = "middle";
 
 const AesOutput = forwardRef<AesOutputRef, AesOutputProps>((_props, ref) => {
 	const [output, setOutput] = useState<valueType>("");
-	const [msgApi, contextHolder] = message.useMessage();
+	const [msgApi, msgContextHolder] = message.useMessage();
 	const codecEl = useRef<CodecRef>(null);
 
 	const copy = async () => {
@@ -28,7 +28,7 @@ const AesOutput = forwardRef<AesOutputRef, AesOutputProps>((_props, ref) => {
 		setOutput(out: Uint8Array) {
 			encode(codecEl.current?.getFormat() || Formatter.Base64, out)
 				.then(setOutput)
-				.catch((err) => console.log(err));
+				.catch(console.log);
 		},
 	}));
 
@@ -38,7 +38,7 @@ const AesOutput = forwardRef<AesOutputRef, AesOutputProps>((_props, ref) => {
 			size="middle"
 			style={{ display: "flex", width: "100%", padding: 24 }}
 		>
-			{contextHolder}
+			{msgContextHolder}
 			<Row justify="space-between" align="middle">
 				<Col>
 					<Title style={{ margin: 0 }} level={5}>
