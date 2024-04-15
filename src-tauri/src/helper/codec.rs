@@ -63,3 +63,13 @@ pub fn hex_decode(input: &str, uppercase: bool) -> Result<ByteBuf> {
         base16ct::lower::decode_vec(input).context("hex encode failed")?
     }))
 }
+
+#[tauri::command]
+pub fn string_encode(input: ByteBuf) -> Result<String> {
+    Ok(String::from_utf8(input.into_vec()).context("utf-8 encode failed")?)
+}
+
+#[tauri::command]
+pub fn string_decode(input: &str) -> Result<ByteBuf> {
+    Ok(ByteBuf::from(input.as_bytes()))
+}
