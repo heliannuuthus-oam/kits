@@ -1840,6 +1840,7 @@ dependencies = [
  "p521",
  "pkcs8",
  "rand 0.8.5",
+ "rand_core 0.6.4",
  "rsa",
  "serde",
  "serde_bytes",

@@ -30,13 +30,18 @@ fn main() -> Result<()> {
 
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
+            // key generator
             crypto::aes::generate_aes,
             crypto::aes::generate_iv,
             crypto::ed25519::generate_ed25519,
             crypto::ecc::generate_ecc,
             crypto::rsa::generate_rsa,
+            // encrytion
             crypto::aes::encrypt_aes,
             crypto::aes::decrypt_aes,
+            crypto::rsa::encrypt_rsa,
+            crypto::rsa::decrypt_rsa,
+            // format
             helper::codec::base64_encode,
             helper::codec::base64_decode,
             helper::codec::hex_encode,

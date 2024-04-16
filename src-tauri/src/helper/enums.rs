@@ -40,7 +40,7 @@ pub enum Digest {
 }
 
 impl Digest {
-    pub fn to_degiest(&self) -> Box<dyn DynDigest + Send + Sync> {
+    pub fn to_digest(&self) -> Box<dyn DynDigest + Send + Sync> {
         match self {
             Digest::Sha1 => Box::new(sha1::Sha1::new()),
             Digest::Sha256 => Box::new(sha2::Sha256::new()),
