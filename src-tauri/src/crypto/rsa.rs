@@ -7,8 +7,6 @@ use rsa::{
 };
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
-use sha1::Sha1;
-use sha2::{digest::DynDigest, Sha256};
 
 use crate::helper::{
     enums::{AsymmetricKeyFormat, Digest, RsaEncryptionPadding},
@@ -31,6 +29,23 @@ pub struct RsaEncryptionPaddingDto {
     mgf_digest: Option<Digest>,
 }
 
+impl RsaEncryptionPaddingDto {
+    pub fn to_padding(&self) -> Box<dyn PaddingScheme + 'static> {
+        match self.padding {
+            RsaEncryptionPadding::Pkcs1v15 => Box::new(Pkcs1v15Encrypt {}),
+            RsaEncryptionPadding::Oaep => {
+                let digest = self.digest.unwrap_or(Digest::Sha256);
+                let mgf_digest = self.mgf_digest.unwrap_or(Digest::Sha256);
+                Box::new(Oaep {
+                    digest: digest.to_degiest(),
+                    mgf_digest: mgf_digest.to_degiest(),
+                    label: None,
+                })
+            }
+        }
+    }
+}
+
 #[tauri::command]
 pub fn generate_rsa(key_size: usize) -> Result<String> {
     let mut rng = rand::thread_rng();
@@ -42,6 +57,7 @@ pub fn generate_rsa(key_size: usize) -> Result<String> {
     Ok(secret.to_string())
 }
 
+#[tauri::command]
 pub fn rsa_encrypt(
     key: ByteBuf,
     key_format: AsymmetricKeyFormat,
@@ -77,6 +93,7 @@ pub fn rsa_encrypt(
     ))
 }
 
+#[tauri::command]
 pub fn rsa_decrypt(
     key: ByteBuf,
     format: AsymmetricKeyFormat,
@@ -105,34 +122,30 @@ pub fn rsa_decrypt(
     decrypt_rsa_inner(private_key, &input, padding)
 }
 
-pub fn encrypt_rsa_inner<D, H>(
+pub fn encrypt_rsa_inner(
     key: RsaPublicKey,
     input: &[u8],
-    padding: RsaEncryptionPadding,
-    digest: Digest,
-    mgf_digest: Digest,
-) -> Result<ByteBuf>
-where
-    D: DynDigest
-        + std::marker::Send
-        + std::marker::Sync
-        + sha2::digest::FixedOutput
-        + std::default::Default
-        + sha2::digest::HashMarker
-        + 'static,
-    H: DynDigest
-        + std::marker::Send
-        + std::marker::Sync
-        + sha2::digest::FixedOutput
-        + std::default::Default
-        + sha2::digest::HashMarker
-        + 'static,
-{
-    let padding = Oaep::new_with_mgf_hash::<D, H>();
+    padding: RsaEncryptionPaddingDto,
+) -> Result<ByteBuf> {
     let mut rng = rand::thread_rng();
     Ok(ByteBuf::from(
-        key.encrypt(&mut rng, padding, input)
-            .context("rsa encrypt failed")?,
+        match padding.padding {
+            RsaEncryptionPadding::Pkcs1v15 => {
+                key.encrypt(&mut rng, Pkcs1v15Encrypt, &input)
+            }
+            RsaEncryptionPadding::Oaep => {
+                let digest = padding.digest.unwrap_or(Digest::Sha256);
+                let mgf_digest = padding.mgf_digest.unwrap_or(Digest::Sha256);
+
+                let padding = Oaep {
+                    digest: digest.to_degiest(),
+                    mgf_digest: mgf_digest.to_degiest(),
+                    label: None,
+                };
+                key.encrypt(&mut rng, padding, &input)
+            }
+        }
+        .context("rsa encrypt failed")?,
     ))
 }
 
@@ -141,66 +154,23 @@ pub fn decrypt_rsa_inner(
     input: &[u8],
     padding: RsaEncryptionPaddingDto,
 ) -> Result<ByteBuf> {
-    Ok(ByteBuf::from(match padding.padding {
-        RsaEncryptionPadding::Pkcs1v15 => key
-            .decrypt(Pkcs1v15Encrypt, &input)
-            .context("rsa decrypt failed")?,
-        RsaEncryptionPadding::Oaep => {
-            let digest = padding.digest.unwrap_or(Digest::Sha256);
-            let mgf_digest = padding.mgf_digest.unwrap_or(Digest::Sha256);
-            match (digest, mgf_digest) {
-                (Digest::Sha1, Digest::Sha1) => todo!(),
-                (Digest::Sha1, Digest::Sha256) => todo!(),
-                (Digest::Sha1, Digest::Sha384) => todo!(),
-                (Digest::Sha1, Digest::Sha512) => todo!(),
-                (Digest::Sha1, Digest::Sha3_256) => todo!(),
-                (Digest::Sha1, Digest::Sha3_384) => todo!(),
-                (Digest::Sha1, Digest::Sha3_512) => todo!(),
-                (Digest::Sha256, Digest::Sha1) => todo!(),
-                (Digest::Sha256, Digest::Sha256) => todo!(),
-                (Digest::Sha256, Digest::Sha384) => todo!(),
-                (Digest::Sha256, Digest::Sha512) => todo!(),
-                (Digest::Sha256, Digest::Sha3_256) => todo!(),
-                (Digest::Sha256, Digest::Sha3_384) => todo!(),
-                (Digest::Sha256, Digest::Sha3_512) => todo!(),
-                (Digest::Sha384, Digest::Sha1) => todo!(),
-                (Digest::Sha384, Digest::Sha256) => todo!(),
-                (Digest::Sha384, Digest::Sha384) => todo!(),
-                (Digest::Sha384, Digest::Sha512) => todo!(),
-                (Digest::Sha384, Digest::Sha3_256) => todo!(),
-                (Digest::Sha384, Digest::Sha3_384) => todo!(),
-                (Digest::Sha384, Digest::Sha3_512) => todo!(),
-                (Digest::Sha512, Digest::Sha1) => todo!(),
-                (Digest::Sha512, Digest::Sha256) => todo!(),
-                (Digest::Sha512, Digest::Sha384) => todo!(),
-                (Digest::Sha512, Digest::Sha512) => todo!(),
-                (Digest::Sha512, Digest::Sha3_256) => todo!(),
-                (Digest::Sha512, Digest::Sha3_384) => todo!(),
-                (Digest::Sha512, Digest::Sha3_512) => todo!(),
-                (Digest::Sha3_256, Digest::Sha1) => todo!(),
-                (Digest::Sha3_256, Digest::Sha256) => todo!(),
-                (Digest::Sha3_256, Digest::Sha384) => todo!(),
-                (Digest::Sha3_256, Digest::Sha512) => todo!(),
-                (Digest::Sha3_256, Digest::Sha3_256) => todo!(),
-                (Digest::Sha3_256, Digest::Sha3_384) => todo!(),
-                (Digest::Sha3_256, Digest::Sha3_512) => todo!(),
-                (Digest::Sha3_384, Digest::Sha1) => todo!(),
-                (Digest::Sha3_384, Digest::Sha256) => todo!(),
-                (Digest::Sha3_384, Digest::Sha384) => todo!(),
-                (Digest::Sha3_384, Digest::Sha512) => todo!(),
-                (Digest::Sha3_384, Digest::Sha3_256) => todo!(),
-                (Digest::Sha3_384, Digest::Sha3_384) => todo!(),
-                (Digest::Sha3_384, Digest::Sha3_512) => todo!(),
-                (Digest::Sha3_512, Digest::Sha1) => todo!(),
-                (Digest::Sha3_512, Digest::Sha256) => todo!(),
-                (Digest::Sha3_512, Digest::Sha384) => todo!(),
-                (Digest::Sha3_512, Digest::Sha512) => todo!(),
-                (Digest::Sha3_512, Digest::Sha3_256) => todo!(),
-                (Digest::Sha3_512, Digest::Sha3_384) => todo!(),
-                (Digest::Sha3_512, Digest::Sha3_512) => todo!(),
+    Ok(ByteBuf::from(
+        match padding.padding {
+            RsaEncryptionPadding::Pkcs1v15 => {
+                key.decrypt(Pkcs1v15Encrypt, input)
             }
+            RsaEncryptionPadding::Oaep => {
+                let digest = padding.digest.unwrap_or(Digest::Sha256);
+                let mgf_digest = padding.mgf_digest.unwrap_or(Digest::Sha256);
 
-            let padding = Oaep::new_with_mgf_hash<Sha1>();
+                let padding = Oaep {
+                    digest: digest.to_degiest(),
+                    mgf_digest: mgf_digest.to_degiest(),
+                    label: None,
+                };
+                key.decrypt(padding, input)
+            }
         }
-    }))
+        .context("rsa decrypt failed")?,
+    ))
 }

@@ -1830,6 +1830,7 @@ dependencies = [
  "block-modes",
  "block-padding",
  "cbc",
+ "digest",
  "ed25519-dalek",
  "hex",
  "inout",
