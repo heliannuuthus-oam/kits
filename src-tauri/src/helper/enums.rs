@@ -8,7 +8,7 @@ pub enum EncryptionMode {
     Gcm,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub enum AsymmetricKeyFormat {
     Pkcs1Pem,
     Pkcs1Der,

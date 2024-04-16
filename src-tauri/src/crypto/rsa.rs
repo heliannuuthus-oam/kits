@@ -1,7 +1,14 @@
 use anyhow::Context;
-use pkcs8::{DecodePrivateKey, DecodePublicKey, EncodePrivateKey};
+use pkcs8::{
+    der::zeroize::Zeroizing, DecodePrivateKey, DecodePublicKey,
+    EncodePrivateKey,
+};
 use rsa::{
-    pkcs1::{DecodeRsaPrivateKey, DecodeRsaPublicKey},
+    pkcs1::{
+        DecodeRsaPrivateKey, DecodeRsaPublicKey, EncodeRsaPrivateKey,
+        EncodeRsaPublicKey,
+    },
+    pkcs8::EncodePublicKey,
     RsaPrivateKey, RsaPublicKey,
 };
 use serde::{Deserialize, Serialize};
@@ -86,14 +93,79 @@ impl RsaEncryptionPaddingDto {
 }
 
 #[tauri::command]
-pub fn generate_rsa(key_size: usize) -> Result<String> {
-    let mut rng = rand::thread_rng();
+pub fn generate_private_rsa(
+    key_size: usize,
+    format: AsymmetricKeyFormat,
+) -> Result<ByteBuf> {
+    let mut rng: rand::prelude::ThreadRng = rand::thread_rng();
     let priv_key = RsaPrivateKey::new(&mut rng, key_size)
-        .expect("failed to generate a key");
-    let secret = priv_key
-        .to_pkcs8_pem(pkcs8::LineEnding::LF)
-        .context("export rsa key failed")?;
-    Ok(secret.to_string())
+        .expect("failed to generate rsa key");
+    let secret = match format {
+        AsymmetricKeyFormat::Pkcs1Pem => Zeroizing::new(
+            priv_key
+                .to_pkcs1_pem(pkcs8::LineEnding::LF)
+                .context(format!(
+                    "generate {} rsa key to pkcs1 pem failed",
+                    key_size
+                ))?
+                .as_bytes()
+                .to_vec(),
+        ),
+        AsymmetricKeyFormat::Pkcs1Der => priv_key
+            .to_pkcs1_der()
+            .context(format!(
+                "generate {} rsa key to pkcs1 der failed",
+                key_size
+            ))?
+            .to_bytes(),
+        AsymmetricKeyFormat::Pkcs8Pem => Zeroizing::new(
+            priv_key
+                .to_pkcs8_pem(pkcs8::LineEnding::LF)
+                .context(format!(
+                    "generate {} rsa key to pkcs8 pem failed",
+                    key_size
+                ))?
+                .as_bytes()
+                .to_vec(),
+        ),
+        AsymmetricKeyFormat::Pkcs8Der => priv_key
+            .to_pkcs8_der()
+            .context(format!(
+                "generate {} rsa key to pkcs8 der failed",
+                key_size
+            ))?
+            .to_bytes(),
+    };
+
+    Ok(ByteBuf::from(secret.to_vec()))
+}
+
+#[tauri::command]
+pub fn generate_public_rsa(
+    key: ByteBuf,
+    format: AsymmetricKeyFormat,
+) -> Result<ByteBuf> {
+    let private_key = load_private_key(key, format)?;
+    let public_key = RsaPublicKey::from(private_key);
+    Ok(ByteBuf::from(match format {
+        AsymmetricKeyFormat::Pkcs1Pem => public_key
+            .to_pkcs1_pem(pkcs8::LineEnding::LF)
+            .context("derive rsa key to pkcs1 pem failed")?
+            .as_bytes()
+            .to_vec(),
+        AsymmetricKeyFormat::Pkcs1Der => public_key
+            .to_pkcs1_der()
+            .context("derive rsa key to pkcs1 der failed")?
+            .to_vec(),
+        AsymmetricKeyFormat::Pkcs8Pem => public_key
+            .to_public_key_pem(pkcs8::LineEnding::LF)
+            .context("derive rsa key to pkcs8 pem failed")?
+            .into_bytes(),
+        AsymmetricKeyFormat::Pkcs8Der => public_key
+            .to_public_key_der()
+            .context("derive rsa key to pkcs8 pem failed")?
+            .to_vec(),
+    }))
 }
 
 #[tauri::command]
@@ -124,29 +196,7 @@ pub fn encrypt_rsa(dto: RsaEncryptionDto) -> Result<ByteBuf> {
 
 #[tauri::command]
 pub fn decrypt_rsa(dto: RsaEncryptionDto) -> Result<ByteBuf> {
-    let private_key = match dto.format {
-        AsymmetricKeyFormat::Pkcs1Pem => {
-            let key_str = String::from_utf8(dto.key.to_vec())
-                .context("rsa key to string squence failed")?;
-            RsaPrivateKey::from_pkcs1_pem(&key_str)
-                .context("init pkcs1 rsa private key failed")?
-        }
-        AsymmetricKeyFormat::Pkcs1Der => {
-            RsaPrivateKey::from_pkcs1_der(&dto.key)
-                .context("init pkcs1 rsa private key failed")?
-        }
-        AsymmetricKeyFormat::Pkcs8Pem => {
-            let key_str = String::from_utf8(dto.key.to_vec())
-                .context("rsa key to string squence failed")?;
-
-            RsaPrivateKey::from_pkcs8_pem(&key_str)
-                .context("init pkcs8 rsa private key failed")?
-        }
-        AsymmetricKeyFormat::Pkcs8Der => {
-            RsaPrivateKey::from_pkcs8_der(&dto.key)
-                .context("init pkcs8 rsa private key failed")?
-        }
-    };
+    let private_key = load_private_key(dto.key, dto.format)?;
     decrypt_rsa_inner(private_key, &dto.input, dto.padding)
 }
 
@@ -172,4 +222,29 @@ pub fn decrypt_rsa_inner(
     Ok(ByteBuf::from(
         key.decrypt(pad, input).context("rsa decrypt failed")?,
     ))
+}
+
+fn load_private_key(
+    key: ByteBuf,
+    format: AsymmetricKeyFormat,
+) -> Result<RsaPrivateKey> {
+    Ok(match format {
+        AsymmetricKeyFormat::Pkcs1Pem => {
+            let key_str = String::from_utf8(key.to_vec())
+                .context("rsa key to string squence failed")?;
+            RsaPrivateKey::from_pkcs1_pem(&key_str)
+                .context("init pkcs1 rsa private key failed")?
+        }
+        AsymmetricKeyFormat::Pkcs1Der => RsaPrivateKey::from_pkcs1_der(&key)
+            .context("init pkcs1 rsa private key failed")?,
+        AsymmetricKeyFormat::Pkcs8Pem => {
+            let key_str = String::from_utf8(key.to_vec())
+                .context("rsa key to string squence failed")?;
+
+            RsaPrivateKey::from_pkcs8_pem(&key_str)
+                .context("init pkcs8 rsa private key failed")?
+        }
+        AsymmetricKeyFormat::Pkcs8Der => RsaPrivateKey::from_pkcs8_der(&key)
+            .context("init pkcs8 rsa private key failed")?,
+    })
 }
