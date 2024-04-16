@@ -14,7 +14,12 @@ import {
 	notification,
 } from "antd";
 import { useRef, useState } from "react";
-import { Codec, CodecRef, Formatter, decode } from "../Codec";
+import {
+	CharCodec,
+	CharCodecRef,
+	CharFormatter,
+	charCodecor,
+} from "../codec/CharCodec";
 
 const { TextArea } = Input;
 
@@ -40,7 +45,7 @@ type FormInput = {
 	mode: Mode;
 	aad?: string;
 	input: string;
-	format: Formatter;
+	format: CharFormatter;
 };
 
 const AesInput = ({
@@ -52,7 +57,7 @@ const AesInput = ({
 	const [keySize, setKeySize] = useState<number>(128);
 	const [operation, setOperation] = useState<string>("encrypt");
 	const initialValues = { mode: Mode.CBC, padding: Padding.Pkcs7Padding };
-	const codecEl = useRef<CodecRef>(null);
+	const codecEl = useRef<CharCodecRef>(null);
 	const mode = Form.useWatch("mode", form);
 	const [notifyApi, notifyContextHodler] = notification.useNotification({
 		stack: { threshold: 1 },
@@ -114,32 +119,34 @@ const AesInput = ({
 	const encryptOrDecrypt = async () => {
 		console.log("form: ", form.getFieldsValue());
 		form.validateFields({ validateOnly: true }).then((_) =>
-			decode(
-				codecEl.current?.getFormat() || Formatter.Base64,
-				form.getFieldValue("input")
-			).then((input) => {
-				if (operation === "encrypt") {
-					invoke<Uint8Array>("encrypt_aes", {
-						...form.getFieldsValue(),
-						input,
-					})
-						.then(setOutput)
-						.catch((err: string) => {
-							notify(err);
-							setOutput(new Uint8Array());
-						});
-				} else {
-					invoke<Uint8Array>("decrypt_aes", {
-						...form.getFieldsValue(),
-						input,
-					})
-						.then(setOutput)
-						.catch((err: string) => {
-							notify(err);
-							setOutput(new Uint8Array());
-						});
-				}
-			})
+			charCodecor
+				.decode(
+					codecEl.current?.getFormat() || CharFormatter.Base64,
+					form.getFieldValue("input")
+				)
+				.then((input) => {
+					if (operation === "encrypt") {
+						invoke<Uint8Array>("encrypt_aes", {
+							...form.getFieldsValue(),
+							input,
+						})
+							.then(setOutput)
+							.catch((err: string) => {
+								notify(err);
+								setOutput(new Uint8Array());
+							});
+					} else {
+						invoke<Uint8Array>("decrypt_aes", {
+							...form.getFieldsValue(),
+							input,
+						})
+							.then(setOutput)
+							.catch((err: string) => {
+								notify(err);
+								setOutput(new Uint8Array());
+							});
+					}
+				})
 		);
 	};
 
@@ -258,21 +265,31 @@ const AesInput = ({
 			<Form.Item key="operation">
 				<Row justify="space-between" align="middle">
 					<Col>
-						<Codec
+						<CharCodec
+							codecor={charCodecor}
 							ref={codecEl}
 							props={{
 								size: size,
-								defaultValue: Formatter.UTF8,
+								defaultValue: CharFormatter.UTF8,
 								options:
 									operation === "encrypt"
 										? [
-												{ value: Formatter.UTF8, label: <span>utf8</span> },
-												{ value: Formatter.Base64, label: <span>base64</span> },
-												{ value: Formatter.Hex, label: <span>hex</span> },
+												{
+													value: CharFormatter.UTF8,
+													label: <span>utf-8</span>,
+												},
+												{
+													value: CharFormatter.Base64,
+													label: <span>base64</span>,
+												},
+												{ value: CharFormatter.Hex, label: <span>hex</span> },
 											]
 										: [
-												{ value: Formatter.Base64, label: <span>base64</span> },
-												{ value: Formatter.Hex, label: <span>hex</span> },
+												{
+													value: CharFormatter.Base64,
+													label: <span>base64</span>,
+												},
+												{ value: CharFormatter.Hex, label: <span>hex</span> },
 											],
 							}}
 							setInput={(input: string) =>
@@ -292,7 +309,7 @@ const AesInput = ({
 													<div
 														onClick={(_) => {
 															setOperation("encrypt");
-															codecEl.current?.setFormat(Formatter.UTF8);
+															codecEl.current?.setFormat(CharFormatter.UTF8);
 														}}
 													>
 														encrypt
@@ -305,7 +322,7 @@ const AesInput = ({
 													<div
 														onClick={(_) => {
 															setOperation("decrypt");
-															codecEl.current?.setFormat(Formatter.Base64);
+															codecEl.current?.setFormat(CharFormatter.Base64);
 														}}
 													>
 														decrypt
