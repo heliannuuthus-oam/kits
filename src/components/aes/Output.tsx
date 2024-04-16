@@ -2,7 +2,12 @@ import { writeText } from "@tauri-apps/api/clipboard";
 import { Button, Col, Input, Row, Space, Typography, message } from "antd";
 import { valueType } from "antd/es/statistic/utils";
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
-import { Codec, CodecRef, Formatter, encode } from "../Codec";
+import {
+	CharCodec,
+	CharCodecRef,
+	CharFormatter,
+	charCodecor,
+} from "../codec/CharCodec";
 const { Title } = Typography;
 const { TextArea } = Input;
 
@@ -17,7 +22,7 @@ const size = "middle";
 const AesOutput = forwardRef<AesOutputRef, AesOutputProps>((_props, ref) => {
 	const [output, setOutput] = useState<valueType>("");
 	const [msgApi, msgContextHolder] = message.useMessage();
-	const codecEl = useRef<CodecRef>(null);
+	const codecEl = useRef<CharCodecRef>(null);
 
 	const copy = async () => {
 		await writeText(output + "");
@@ -26,7 +31,8 @@ const AesOutput = forwardRef<AesOutputRef, AesOutputProps>((_props, ref) => {
 
 	useImperativeHandle(ref, () => ({
 		setOutput(out: Uint8Array) {
-			encode(codecEl.current?.getFormat() || Formatter.Base64, out)
+			charCodecor
+				.encode(codecEl.current?.getFormat() || CharFormatter.Base64, out)
 				.then(setOutput)
 				.catch(console.log);
 		},
@@ -46,9 +52,10 @@ const AesOutput = forwardRef<AesOutputRef, AesOutputProps>((_props, ref) => {
 					</Title>
 				</Col>
 				<Col>
-					<Codec
+					<CharCodec
 						ref={codecEl}
-						props={{ size: size, defaultValue: Formatter.Base64 }}
+						codecor={charCodecor}
+						props={{ size: size, defaultValue: CharFormatter.Base64 }}
 						setInput={setOutput}
 						getInput={() => output + ""}
 					/>

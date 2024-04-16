@@ -6,10 +6,7 @@ use aes::{
     },
     Aes128, Aes256,
 };
-use aes_gcm::{
-    aead::{Aead, AeadMutInPlace, Payload},
-    AesGcm, Nonce,
-};
+use aes_gcm::{aead::AeadMutInPlace, AesGcm, Nonce};
 use anyhow::Context;
 use base64ct::{Base64, Encoding};
 use block_padding::NoPadding;
