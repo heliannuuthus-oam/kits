@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api";
 import {
 	Button,
 	Col,
+	Dropdown,
 	Flex,
 	Form,
 	FormItemProps,
@@ -9,10 +10,17 @@ import {
 	Row,
 	Select,
 	SelectProps,
+	Typography,
 } from "antd";
 import TextArea, { TextAreaProps } from "antd/es/input/TextArea";
-import { useState } from "react";
-import { CharFormatter, charCodecor } from "../../components/codec/CharCodec";
+import { useRef, useState } from "react";
+import {
+	CharCodec,
+	CharCodecRef,
+	CharFormatter,
+	charCodecor,
+} from "../../components/codec/CharCodec";
+import { DownOutlined } from "@ant-design/icons";
 
 const DefaultTextArea = ({ style, ...props }: TextAreaProps) => {
 	return <TextArea {...props} style={{ resize: "none", ...style }}></TextArea>;
@@ -117,8 +125,11 @@ type FormatFormItem = {
 	errorMsg?: FormItemProps["help"];
 };
 
+const size = "middle";
+const keyHeight = 200;
 const RsaEncryption = () => {
 	const [form] = Form.useForm<RsaEncryptionForm>();
+	const [operation, setOperation] = useState<string>("encrypt");
 	const [keySize, setKeySize] = useState<number>(2048);
 	const padding = Form.useWatch("padding", form);
 	const digest = Form.useWatch("digest", form);
@@ -127,6 +138,10 @@ const RsaEncryption = () => {
 	});
 	const [generating, setGenerating] = useState<boolean>(false);
 	const [deriving, setDeriving] = useState<boolean>(false);
+	const privateKeyCodecEl = useRef<CharCodecRef>(null);
+	const publicKeyCodecEl = useRef<CharCodecRef>(null);
+	const inputCodecEl = useRef<CharCodecRef>(null);
+	const outputCodecEl = useRef<CharCodecRef>(null);
 	const renderExtract = (padding: Padding) => {
 		switch (padding) {
 			case Padding.Pkcs1_v15:
@@ -210,21 +225,47 @@ const RsaEncryption = () => {
 	const encryptOrDecrypt = async () => {
 		try {
 			const parameters = await form.validateFields({ validateOnly: true });
-			console.log(parameters);
-			const key = await charCodecor.decode(
-				CharFormatter.Base64,
-				parameters.publicKey
+			const input = await charCodecor.decode(
+				inputCodecEl.current?.getFormat() || CharFormatter.UTF8,
+				parameters.input || ""
 			);
-			const output = await invoke<Uint8Array>("encrypt_rsa", {
-				data: {
-					...parameters,
-					format: format.value,
-					key: key,
-				},
-			});
+			console.log(parameters);
+			let output;
+			if (operation === "encrypt") {
+				const key = await charCodecor.decode(
+					publicKeyCodecEl.current?.getFormat() || CharFormatter.Base64,
+					parameters.publicKey
+				);
+
+				output = await invoke<Uint8Array>("encrypt_rsa", {
+					data: {
+						...parameters,
+						input,
+						format: format.value,
+						key: key,
+					},
+				});
+			} else {
+				const key = await charCodecor.decode(
+					privateKeyCodecEl.current?.getFormat() || CharFormatter.Base64,
+					parameters.privateKey
+				);
+
+				output = await invoke<Uint8Array>("decrypt_rsa", {
+					data: {
+						...parameters,
+						input,
+						format: format.value,
+						key: key,
+					},
+				});
+			}
 
 			form.setFieldsValue({
-				output: await charCodecor.encode(CharFormatter.Base64, output),
+				output: await charCodecor.encode(
+					outputCodecEl.current?.getFormat() || CharFormatter.Base64,
+					output
+				),
 			});
 		} catch (err) {
 			console.log(err);
@@ -269,7 +310,7 @@ const RsaEncryption = () => {
 			form={form}
 			initialValues={initialValues}
 			wrapperCol={{ span: 24 }}
-			style={{ padding: 24 }}
+			style={{ padding: "0 24px" }}
 			layout="vertical"
 			colon={true}
 			validateTrigger="onBlur"
@@ -277,12 +318,32 @@ const RsaEncryption = () => {
 			<Form.Item key="key">
 				<Row justify="space-between" align="middle">
 					<Col span={10}>
-						<Form.Item
-							name="privateKey"
-							label="Private Key"
-							rules={keyValidator}
+						<Flex
+							align="center"
+							justify="space-between"
+							style={{ padding: "24px 0" }}
 						>
-							<DefaultTextArea disabled={generating} style={{ height: 249 }} />
+							<Typography.Title level={5} style={{ margin: 0 }}>
+								PrivateKey
+							</Typography.Title>
+							<CharCodec
+								codecor={charCodecor}
+								ref={privateKeyCodecEl}
+								props={{
+									size: size,
+									defaultValue: CharFormatter.Base64,
+								}}
+								setInput={(input: string) =>
+									form.setFieldsValue({ privateKey: input })
+								}
+								getInput={() => form.getFieldValue("privateKey")}
+							/>
+						</Flex>
+						<Form.Item name="privateKey" rules={keyValidator}>
+							<DefaultTextArea
+								disabled={generating}
+								style={{ height: keyHeight }}
+							/>
 						</Form.Item>
 					</Col>
 					<Col span={3}>
@@ -294,7 +355,7 @@ const RsaEncryption = () => {
 									derivePublicKey(null);
 								}}
 								disabled={generating}
-								style={{ minWidth: 90, minHeight: 42 }}
+								style={{ minWidth: 90, minHeight: 32 }}
 								type="primary"
 							>
 								derive
@@ -304,21 +365,45 @@ const RsaEncryption = () => {
 								value={keySize}
 								onChange={setKeySize}
 								options={keySizes}
-								style={{ minWidth: 90, minHeight: 42 }}
+								style={{ minWidth: 90, minHeight: 32 }}
 							/>
 							<Button
 								loading={generating}
 								type="primary"
 								onClick={generatePrivateKey}
-								style={{ minWidth: 90, minHeight: 42 }}
+								style={{ minWidth: 90, minHeight: 32 }}
 							>
 								generate
 							</Button>
 						</Flex>
 					</Col>
 					<Col span={10}>
-						<Form.Item name="publicKey" label="Public Key" rules={keyValidator}>
-							<DefaultTextArea disabled={generating} style={{ height: 249 }} />
+						<Flex
+							align="center"
+							justify="space-between"
+							style={{ padding: "24px 0" }}
+						>
+							<Typography.Title level={5} style={{ margin: 0 }}>
+								PrivateKey
+							</Typography.Title>
+							<CharCodec
+								codecor={charCodecor}
+								ref={publicKeyCodecEl}
+								props={{
+									size: size,
+									defaultValue: CharFormatter.Base64,
+								}}
+								setInput={(input: string) =>
+									form.setFieldsValue({ publicKey: input })
+								}
+								getInput={() => form.getFieldValue("publicKey")}
+							/>
+						</Flex>
+						<Form.Item name="publicKey" rules={keyValidator}>
+							<DefaultTextArea
+								disabled={generating}
+								style={{ height: keyHeight }}
+							/>
 						</Form.Item>
 					</Col>
 				</Row>
@@ -350,29 +435,109 @@ const RsaEncryption = () => {
 					</Col>
 
 					<Col>
-						<Button disabled={generating} onClick={encryptOrDecrypt}>
-							encrypt
-						</Button>
+						<Dropdown.Button
+							menu={{
+								items: [
+									{
+										label: (
+											<div
+												onClick={(_) => {
+													setOperation("encrypt");
+													inputCodecEl.current?.setFormat(CharFormatter.UTF8);
+												}}
+											>
+												encrypt
+											</div>
+										),
+										key: "encrypt",
+									},
+									{
+										label: (
+											<div
+												onClick={(_) => {
+													setOperation("decrypt");
+													inputCodecEl.current?.setFormat(CharFormatter.Base64);
+												}}
+											>
+												decrypt
+											</div>
+										),
+										key: "decrypt",
+									},
+								],
+							}}
+							trigger={["hover"]}
+							htmlType="submit"
+							size={size}
+							style={{ margin: 0 }}
+							onClick={encryptOrDecrypt}
+							icon={<DownOutlined />}
+						>
+							{operation}
+						</Dropdown.Button>
 					</Col>
 				</Row>
 			</Form.Item>
-
-			<Form.Item key="input" name="input" label="Input" rules={inputValidator}>
-				<DefaultTextArea
-					count={{
-						show: true,
-						max: calcEncryptionMaxLength(
-							keySize,
-							padding,
-							padding === Padding.Oaep ? digest : undefined
-						),
-					}}
-					style={{ height: 150 }}
-				></DefaultTextArea>
+			<Form.Item>
+				<Flex
+					align="center"
+					justify="space-between"
+					style={{ padding: "0 0 24px 0" }}
+				>
+					<Typography.Title level={5} style={{ margin: 0 }}>
+						Input
+					</Typography.Title>
+					<CharCodec
+						codecor={charCodecor}
+						ref={inputCodecEl}
+						props={{
+							size: size,
+							defaultValue: CharFormatter.UTF8,
+						}}
+						setInput={(input: string) => form.setFieldsValue({ input })}
+						getInput={() => form.getFieldValue("input")}
+					/>
+				</Flex>
+				<Form.Item key="input" name="input" rules={inputValidator}>
+					<DefaultTextArea
+						count={{
+							show: operation === "encrypt",
+							max:
+								operation === "encrypt"
+									? calcEncryptionMaxLength(
+											keySize,
+											padding,
+											padding === Padding.Oaep ? digest : undefined
+										)
+									: undefined,
+						}}
+						style={{ height: 150 }}
+					></DefaultTextArea>
+				</Form.Item>
 			</Form.Item>
-
-			<Form.Item key="output" name="output" label="Output">
-				<DefaultTextArea style={{ height: 150 }}></DefaultTextArea>
+			<Form.Item>
+				<Flex
+					align="center"
+					justify="space-between"
+					style={{ padding: "0 0 24px 0" }}
+				>
+					<Typography.Title level={5} style={{ margin: 0 }}>
+						Output
+					</Typography.Title>
+					<CharCodec
+						codecor={charCodecor}
+						ref={outputCodecEl}
+						props={{
+							size: size,
+							defaultValue: CharFormatter.Base64,
+						}}
+						setInput={(input: string) => form.setFieldsValue({ output: input })}
+						getInput={() => form.getFieldValue("output")}
+					/>
+				</Flex>
+				<Form.Item key="output" name="output">
+					<DefaultTextArea style={{ height: 150 }}></DefaultTextArea>
+				</Form.Item>
 			</Form.Item>
 		</Form>
 	);
