@@ -210,7 +210,7 @@ const AesInput = ({
 				<Row justify="space-between" align="middle">
 					<Col>
 						<Title style={{ margin: 0 }} level={5}>
-							input:
+							Input:
 						</Title>
 					</Col>
 					<Col>

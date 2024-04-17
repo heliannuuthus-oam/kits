@@ -1,0 +1,17 @@
+name: ci
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+  pull_request_target:
+    types: [closed]
+    
+jobs:
+  project:
+    uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust-tauri.yml@master
+    permissions:
+      contents: write
+      packages: write
+    with:
+      rust_workdir: "src-tauri"
+      node_workdir: "./"

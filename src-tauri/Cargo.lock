@@ -1810,6 +1810,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "keccak"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ecc2af9a1119c51f12a14607e783cb977bde58bc069ff0c3da1095e635d70654"
+dependencies = [
+ "cpufeatures",
+]
+
+[[package]]
 name = "kits"
 version = "0.0.0"
 dependencies = [
@@ -1821,6 +1830,7 @@ dependencies = [
  "block-modes",
  "block-padding",
  "cbc",
+ "digest",
  "ed25519-dalek",
  "hex",
  "inout",
@@ -1828,13 +1838,19 @@ dependencies = [
  "p256",
  "p384",
  "p521",
+ "pkcs1",
  "pkcs8",
  "rand 0.8.5",
+ "rand_core 0.6.4",
  "rsa",
  "serde",
  "serde_bytes",
  "serde_json",
+ "sha1",
+ "sha2",
+ "sha3",
  "sm4",
+ "spki",
  "tauri",
  "tauri-build",
  "thiserror",
@@ -3095,6 +3111,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha1"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3bf829a2d51ab4a5ddf1352d8470c140cadc8301b2ae1789db023f01cedd6ba"
+dependencies = [
+ "cfg-if",
+ "cpufeatures",
+ "digest",
+]
+
+[[package]]
 name = "sha2"
 version = "0.10.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3103,6 +3130,16 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest",
+]
+
+[[package]]
+name = "sha3"
+version = "0.10.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "75872d278a8f37ef87fa0ddbda7802605cb18344497949862c0d4dcb291eba60"
+dependencies = [
+ "digest",
+ "keccak",
 ]
 
 [[package]]
