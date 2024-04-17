@@ -4,12 +4,12 @@ import {
 	Col,
 	Flex,
 	Form,
+	FormItemProps,
 	FormRule,
 	Row,
 	Select,
 	SelectProps,
 } from "antd";
-import { FormItemInputProps } from "antd/es/form/FormItemInput";
 import TextArea, { TextAreaProps } from "antd/es/input/TextArea";
 import { useState } from "react";
 import { CharFormatter, charCodecor } from "../../components/codec/CharCodec";
@@ -65,14 +65,40 @@ const keySizes: SelectProps["options"] = [2048, 3072, 4096].map((bit) => {
 	};
 });
 
+const digestLength: Record<Digest, number> = {
+	sha1: 160,
+	sha256: 256,
+	sha384: 384,
+	sha512: 512,
+	"sha3-256": 256,
+	"sha3-384": 384,
+	"sha3-512": 512,
+};
+
+const calcEncryptionMaxLength = (
+	keySize: number,
+	padding: Padding,
+	digest?: Digest
+): number => {
+	switch (padding) {
+		case Padding.Pkcs1_v15:
+			return keySize / 8 - 11; // pkcs1_v1-5 padding length
+		case Padding.Oaep:
+			if (digest) {
+				return keySize / 8 - (2 * digestLength[digest]) / 8 - 2;
+			}
+			return 0;
+	}
+};
+
 type RsaEncryptionForm = {
 	privateKey: string;
 	publicKey: string;
 	padding: Padding;
 	digest?: Digest;
 	mgfDigest?: Digest;
-	input: string;
-	output: string;
+	input: string | null;
+	output: string | null;
 };
 
 const initialValues: RsaEncryptionForm = {
@@ -81,20 +107,21 @@ const initialValues: RsaEncryptionForm = {
 	padding: Padding.Oaep,
 	digest: Digest.Sha256,
 	mgfDigest: Digest.Sha256,
-	input: "",
-	output: "",
+	input: null,
+	output: null,
 };
 
 type FormatFormItem = {
 	value: Format;
-	validateStatus?: FormItemInputProps["status"];
-	errorMsg?: FormItemInputProps["help"];
+	validateStatus?: FormItemProps["validateStatus"];
+	errorMsg?: FormItemProps["help"];
 };
 
 const RsaEncryption = () => {
 	const [form] = Form.useForm<RsaEncryptionForm>();
 	const [keySize, setKeySize] = useState<number>(2048);
 	const padding = Form.useWatch("padding", form);
+	const digest = Form.useWatch("digest", form);
 	const [format, setFormat] = useState<FormatFormItem>({
 		value: Format.Pkcs8_PEM,
 	});
@@ -144,7 +171,7 @@ const RsaEncryption = () => {
 
 			const publicKeyByte = await invoke<Uint8Array>("derive_rsa", {
 				key: privateKey,
-				format: form.getFieldValue("format"),
+				format: format.value,
 			});
 
 			const publicKey = await charCodecor.encode(
@@ -163,7 +190,7 @@ const RsaEncryption = () => {
 		try {
 			const privateKeyBytes = await invoke<Uint8Array>("generate_rsa", {
 				keySize: keySize,
-				format: form.getFieldValue("format"),
+				format: format.value,
 			});
 
 			const [_, privateKey] = await Promise.all([
@@ -181,24 +208,57 @@ const RsaEncryption = () => {
 	};
 
 	const encryptOrDecrypt = async () => {
-		const cc = await form.validateFields({ validateOnly: true });
-		console.log(cc);
+		try {
+			const parameters = await form.validateFields({ validateOnly: true });
+			console.log(parameters);
+			const key = await charCodecor.decode(
+				CharFormatter.Base64,
+				parameters.publicKey
+			);
+			const output = await invoke<Uint8Array>("encrypt_rsa", {
+				data: {
+					...parameters,
+					format: format.value,
+					key: key,
+				},
+			});
+
+			form.setFieldsValue({
+				output: await charCodecor.encode(CharFormatter.Base64, output),
+			});
+		} catch (err) {
+			console.log(err);
+		}
 	};
 
 	const formatChange = async (to: Format) => {
 		try {
-			const { privateKey, publicKey } = await form.validateFields([
-				"privateKey",
-				"publicKey",
+			let { privateKey: privateKeyStr, publicKey: publicKeyStr } =
+				await form.validateFields(["privateKey", "publicKey"]);
+
+			const [privateKey, publicKey] = await Promise.all([
+				charCodecor.decode(CharFormatter.Base64, privateKeyStr),
+				charCodecor.decode(CharFormatter.Base64, publicKeyStr),
 			]);
-			const ca = await invoke("transfer_key", {
-				privateKey,
-				publicKey,
-				to,
-				from: format,
-			});
-			console.log(ca);
+
+			const [privateKeyBytes, publicKeyByte] = await invoke<Array<Uint8Array>>(
+				"transfer_key",
+				{
+					privateKey,
+					publicKey,
+					to,
+					from: format.value,
+				}
+			);
+			[privateKeyStr, publicKeyStr] = await Promise.all([
+				charCodecor.encode(CharFormatter.Base64, privateKeyBytes),
+				charCodecor.encode(CharFormatter.Base64, publicKeyByte),
+			]);
 			setFormat({ value: to });
+			form.setFieldsValue({
+				privateKey: privateKeyStr,
+				publicKey: publicKeyStr,
+			});
 		} catch (err) {
 			console.log(err);
 		}
@@ -212,6 +272,7 @@ const RsaEncryption = () => {
 			style={{ padding: 24 }}
 			layout="vertical"
 			colon={true}
+			validateTrigger="onBlur"
 		>
 			<Form.Item key="key">
 				<Row justify="space-between" align="middle">
@@ -273,8 +334,13 @@ const RsaEncryption = () => {
 					</Col>
 
 					<Col span={4}>
-						<Form.Item noStyle name="format">
+						<Form.Item
+							noStyle
+							help={format.errorMsg}
+							validateStatus={format.validateStatus}
+						>
 							<Select
+								value={format.value}
 								onChange={formatChange}
 								disabled={generating}
 								style={{ minWidth: "7.5rem" }}
@@ -291,11 +357,21 @@ const RsaEncryption = () => {
 				</Row>
 			</Form.Item>
 
-			<Form.Item key="input" label="Input" rules={inputValidator}>
-				<DefaultTextArea style={{ height: 150 }}></DefaultTextArea>
+			<Form.Item key="input" name="input" label="Input" rules={inputValidator}>
+				<DefaultTextArea
+					count={{
+						show: true,
+						max: calcEncryptionMaxLength(
+							keySize,
+							padding,
+							padding === Padding.Oaep ? digest : undefined
+						),
+					}}
+					style={{ height: 150 }}
+				></DefaultTextArea>
 			</Form.Item>
 
-			<Form.Item key="output" label="Output">
+			<Form.Item key="output" name="output" label="Output">
 				<DefaultTextArea style={{ height: 150 }}></DefaultTextArea>
 			</Form.Item>
 		</Form>

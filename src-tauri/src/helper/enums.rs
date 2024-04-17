@@ -35,6 +35,7 @@ pub enum AesEncryptionPadding {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all="kebab-case")]
 pub enum Digest {
     Sha1,
     Sha256,

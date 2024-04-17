@@ -121,15 +121,15 @@ pub async fn derive_rsa(
 }
 
 #[tauri::command]
-pub async fn encrypt_rsa(dto: RsaEncryptionDto) -> Result<ByteBuf> {
-    let public_key = bytes_to_public_key(&dto.key, dto.format)?;
-    encrypt_rsa_inner(public_key, &dto.input, dto.padding)
+pub async fn encrypt_rsa(data: RsaEncryptionDto) -> Result<ByteBuf> {
+    let public_key = bytes_to_public_key(&data.key, data.format)?;
+    encrypt_rsa_inner(public_key, &data.input, data.padding)
 }
 
 #[tauri::command]
-pub async fn decrypt_rsa(dto: RsaEncryptionDto) -> Result<ByteBuf> {
-    let private_key = bytes_to_private_key(&dto.key, dto.format)?;
-    decrypt_rsa_inner(private_key, &dto.input, dto.padding)
+pub async fn decrypt_rsa(data: RsaEncryptionDto) -> Result<ByteBuf> {
+    let private_key = bytes_to_private_key(&data.key, data.format)?;
+    decrypt_rsa_inner(private_key, &data.input, data.padding)
 }
 
 #[tauri::command]
@@ -139,7 +139,13 @@ pub async fn transfer_key(
     from: AsymmetricKeyFormat,
     to: AsymmetricKeyFormat,
 ) -> Result<KeyTuple> {
-    info!("tranfer rsa key: {:?} to {:?}", from, to);
+    info!(
+        "tranfer rsa key,  {:?} to {:?}. private->{}, public->{}",
+        from,
+        to,
+        private_key.is_some(),
+        public_key.is_some()
+    );
     Ok(KeyTuple(
         if let Some(key) = private_key {
             let current = bytes_to_private_key(&key, from)?;
