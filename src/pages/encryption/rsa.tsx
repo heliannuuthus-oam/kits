@@ -1,6 +1,18 @@
 import { invoke } from "@tauri-apps/api";
-import { Button, Col, Form, Row, Select, SelectProps } from "antd";
+import {
+	Button,
+	Col,
+	Flex,
+	Form,
+	FormRule,
+	Row,
+	Select,
+	SelectProps,
+} from "antd";
+import { FormItemInputProps } from "antd/es/form/FormItemInput";
 import TextArea, { TextAreaProps } from "antd/es/input/TextArea";
+import { useState } from "react";
+import { CharFormatter, charCodecor } from "../../components/codec/CharCodec";
 
 const DefaultTextArea = ({ style, ...props }: TextAreaProps) => {
 	return <TextArea {...props} style={{ resize: "none", ...style }}></TextArea>;
@@ -46,41 +58,63 @@ const formats: SelectProps["options"] = (
 	return { value: Format[key], label: <span>{Format[key].toString()}</span> };
 });
 
+const keySizes: SelectProps["options"] = [2048, 3072, 4096].map((bit) => {
+	return {
+		value: bit,
+		label: <span>{bit}</span>,
+	};
+});
+
 type RsaEncryptionForm = {
 	privateKey: string;
 	publicKey: string;
-	format: Format;
 	padding: Padding;
 	digest?: Digest;
 	mgfDigest?: Digest;
+	input: string;
+	output: string;
 };
 
 const initialValues: RsaEncryptionForm = {
 	privateKey: "",
 	publicKey: "",
-	format: Format.Pkcs8_PEM,
 	padding: Padding.Oaep,
 	digest: Digest.Sha256,
 	mgfDigest: Digest.Sha256,
+	input: "",
+	output: "",
+};
+
+type FormatFormItem = {
+	value: Format;
+	validateStatus?: FormItemInputProps["status"];
+	errorMsg?: FormItemInputProps["help"];
 };
 
 const RsaEncryption = () => {
 	const [form] = Form.useForm<RsaEncryptionForm>();
-
+	const [keySize, setKeySize] = useState<number>(2048);
 	const padding = Form.useWatch("padding", form);
-
+	const [format, setFormat] = useState<FormatFormItem>({
+		value: Format.Pkcs8_PEM,
+	});
+	const [generating, setGenerating] = useState<boolean>(false);
+	const [deriving, setDeriving] = useState<boolean>(false);
 	const renderExtract = (padding: Padding) => {
 		switch (padding) {
 			case Padding.Pkcs1_v15:
-				return [<Col span={4}></Col>, <Col span={4}></Col>];
+				return [
+					<Col key="oaep-digest-empty" span={4}></Col>,
+					<Col key="oaep-mgf-digest-empty" span={4}></Col>,
+				];
 			case Padding.Oaep:
 				return [
-					<Col span={4}>
+					<Col span={4} key="oaep-digest">
 						<Form.Item noStyle name="digest">
 							<Select options={digests} />
 						</Form.Item>
 					</Col>,
-					<Col span={4}>
+					<Col span={4} key="oaep-mgf-digest">
 						<Form.Item noStyle name="mgfDigest">
 							<Select options={digests} />
 						</Form.Item>
@@ -89,12 +123,85 @@ const RsaEncryption = () => {
 		}
 	};
 
-	const generate_key = () => {
-		invoke("generate_private_rsa", {});
+	const keyValidator: FormRule[] = [
+		{ required: true, message: "key is required" },
+	];
+
+	const inputValidator: FormRule[] = [
+		{ required: true, message: "input is required" },
+	];
+
+	const derivePublicKey = async (key: Uint8Array | null) => {
+		setDeriving(true);
+		try {
+			const privateKey =
+				key == null
+					? await charCodecor.decode(
+							CharFormatter.Base64,
+							form.getFieldValue("privateKey")
+						)
+					: key;
+
+			const publicKeyByte = await invoke<Uint8Array>("derive_rsa", {
+				key: privateKey,
+				format: form.getFieldValue("format"),
+			});
+
+			const publicKey = await charCodecor.encode(
+				CharFormatter.Base64,
+				publicKeyByte
+			);
+			form.setFieldsValue({ publicKey: publicKey });
+		} catch (err) {
+			console.log(err);
+		}
+		setDeriving(false);
 	};
 
-	const encryptOrDecrypt = () => {
-		console.log(form.getFieldsValue());
+	const generatePrivateKey = async () => {
+		setGenerating(true);
+		try {
+			const privateKeyBytes = await invoke<Uint8Array>("generate_rsa", {
+				keySize: keySize,
+				format: form.getFieldValue("format"),
+			});
+
+			const [_, privateKey] = await Promise.all([
+				derivePublicKey(privateKeyBytes),
+				charCodecor.encode(CharFormatter.Base64, privateKeyBytes),
+			]);
+
+			form.setFieldsValue({
+				privateKey,
+			});
+		} catch (err) {
+			console.log(err);
+		}
+		setGenerating(false);
+	};
+
+	const encryptOrDecrypt = async () => {
+		const cc = await form.validateFields({ validateOnly: true });
+		console.log(cc);
+	};
+
+	const formatChange = async (to: Format) => {
+		try {
+			const { privateKey, publicKey } = await form.validateFields([
+				"privateKey",
+				"publicKey",
+			]);
+			const ca = await invoke("transfer_key", {
+				privateKey,
+				publicKey,
+				to,
+				from: format,
+			});
+			console.log(ca);
+			setFormat({ value: to });
+		} catch (err) {
+			console.log(err);
+		}
 	};
 
 	return (
@@ -103,22 +210,54 @@ const RsaEncryption = () => {
 			initialValues={initialValues}
 			wrapperCol={{ span: 24 }}
 			style={{ padding: 24 }}
+			layout="vertical"
+			colon={true}
 		>
 			<Form.Item key="key">
 				<Row justify="space-between" align="middle">
 					<Col span={10}>
-						<Form.Item noStyle name="private_key">
-							<DefaultTextArea style={{ height: 300 }} />
+						<Form.Item
+							name="privateKey"
+							label="Private Key"
+							rules={keyValidator}
+						>
+							<DefaultTextArea disabled={generating} style={{ height: 249 }} />
 						</Form.Item>
 					</Col>
-					<Col span={2}>
-						<Button type="primary" style={{ transform: "translateY(-50%)" }}>
-							derive
-						</Button>
+					<Col span={3}>
+						<Flex gap="middle" vertical>
+							<Button
+								loading={deriving}
+								onClick={() => {
+									setDeriving(true);
+									derivePublicKey(null);
+								}}
+								disabled={generating}
+								style={{ minWidth: 90, minHeight: 42 }}
+								type="primary"
+							>
+								derive
+							</Button>
+							<Select
+								disabled={generating}
+								value={keySize}
+								onChange={setKeySize}
+								options={keySizes}
+								style={{ minWidth: 90, minHeight: 42 }}
+							/>
+							<Button
+								loading={generating}
+								type="primary"
+								onClick={generatePrivateKey}
+								style={{ minWidth: 90, minHeight: 42 }}
+							>
+								generate
+							</Button>
+						</Flex>
 					</Col>
 					<Col span={10}>
-						<Form.Item noStyle name="public_key">
-							<DefaultTextArea style={{ height: 300 }} />
+						<Form.Item name="publicKey" label="Public Key" rules={keyValidator}>
+							<DefaultTextArea disabled={generating} style={{ height: 249 }} />
 						</Form.Item>
 					</Col>
 				</Row>
@@ -129,30 +268,35 @@ const RsaEncryption = () => {
 					{renderExtract(padding)}
 					<Col span={4}>
 						<Form.Item noStyle name="padding">
-							<Select options={paddings} />
+							<Select style={{ minWidth: "8rem" }} options={paddings} />
 						</Form.Item>
 					</Col>
 
 					<Col span={4}>
 						<Form.Item noStyle name="format">
-							<Select options={formats}></Select>
+							<Select
+								onChange={formatChange}
+								disabled={generating}
+								style={{ minWidth: "7.5rem" }}
+								options={formats}
+							></Select>
 						</Form.Item>
 					</Col>
+
 					<Col>
-						<Button onClick={generate_key}>generate</Button>
-					</Col>
-					<Col>
-						<Button onClick={encryptOrDecrypt}>encrypt</Button>
+						<Button disabled={generating} onClick={encryptOrDecrypt}>
+							encrypt
+						</Button>
 					</Col>
 				</Row>
 			</Form.Item>
 
-			<Form.Item key="input">
-				<DefaultTextArea style={{ height: 200 }}></DefaultTextArea>
+			<Form.Item key="input" label="Input" rules={inputValidator}>
+				<DefaultTextArea style={{ height: 150 }}></DefaultTextArea>
 			</Form.Item>
 
-			<Form.Item key="output">
-				<DefaultTextArea style={{ height: 200 }}></DefaultTextArea>
+			<Form.Item key="output" label="Output">
+				<DefaultTextArea style={{ height: 150 }}></DefaultTextArea>
 			</Form.Item>
 		</Form>
 	);

@@ -10,15 +10,21 @@ pub enum EncryptionMode {
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub enum AsymmetricKeyFormat {
+    #[serde(rename = "pkcs1-pem")]
     Pkcs1Pem,
+    #[serde(rename = "pkcs1-der")]
     Pkcs1Der,
+    #[serde(rename = "pkcs8-pem")]
     Pkcs8Pem,
+    #[serde(rename = "pkcs8-der")]
     Pkcs8Der,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum RsaEncryptionPadding {
+    #[serde(rename = "pkcs1-v1_5")]
     Pkcs1v15,
+    #[serde(rename = "oaep")]
     Oaep,
 }
 
