@@ -73,3 +73,39 @@ pub fn string_encode(input: ByteBuf) -> Result<String> {
 pub fn string_decode(input: &str) -> Result<ByteBuf> {
     Ok(ByteBuf::from(input.as_bytes()))
 }
+
+pub fn pkcs8_private_encode<P>(input: P, pem: bool) -> Result<ByteBuf>
+where
+    P: pkcs8::EncodePrivateKey,
+{
+    Ok(ByteBuf::from(if pem {
+        input
+            .to_pkcs8_pem(pkcs8::LineEnding::LF)
+            .context("private key pkcs8 pem encode failed")?
+            .as_bytes()
+            .to_vec()
+    } else {
+        input
+            .to_pkcs8_der()
+            .context("public key pkcs8 der encode failed")?
+            .as_bytes()
+            .to_vec()
+    }))
+}
+
+pub fn pkcs8_public_encode<P: pkcs8::EncodePublicKey>(
+    input: P,
+    pem: bool,
+) -> Result<ByteBuf> {
+    Ok(ByteBuf::from(if pem {
+        input
+            .to_public_key_pem(pkcs8::LineEnding::LF)
+            .context("public key pkcs8 pem encode failed")?
+            .into_bytes()
+    } else {
+        input
+            .to_public_key_der()
+            .context("public key pkcs8 der encode failed")?
+            .into_vec()
+    }))
+}

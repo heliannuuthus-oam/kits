@@ -1,5 +1,16 @@
 use digest::{Digest as Di, DynDigest};
 use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum EccCurveName {
+    NistP256,
+    NistP384,
+    NistP521,
+    Secp256k1,
+    Curve25519,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum EncryptionMode {
@@ -35,7 +46,7 @@ pub enum AesEncryptionPadding {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all="kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum Digest {
     Sha1,
     Sha256,
