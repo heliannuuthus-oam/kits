@@ -2,7 +2,6 @@ use anyhow::Context;
 use elliptic_curve::AffinePoint;
 use pkcs8::EncodePrivateKey;
 use serde_bytes::ByteBuf;
-use x25519_dalek::{x25519, EphemeralSecret, PublicKey};
 
 use crate::helper::{
     enums::{AsymmetricKeyFormat, EccCurveName},
