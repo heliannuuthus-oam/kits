@@ -1,5 +1,5 @@
 use anyhow::Context;
-use elliptic_curve::AffinePoint;
+use elliptic_curve::{AffinePoint, SecretKey};
 use pkcs8::EncodePrivateKey;
 use serde_bytes::ByteBuf;
 
@@ -56,6 +56,31 @@ pub fn generate_ecc(
             }
         }),
     }?))
+}
+
+fn import_ecc_private_key(
+    key: ByteBuf,
+    format: AsymmetricKeyFormat,
+) -> Result<elliptic_curve::SecretKey<dyn elliptic_curve::Curve>> {
+    Ok(match format {
+        AsymmetricKeyFormat::Pkcs8Pem => {
+            let key_str = String::from_utf8(key.to_vec())
+                .context("key to utf8 failed")?;
+            elliptic_curve::SecretKey::from_sec1_pem(&key_str)
+                .context("init pkcs8 pem secret key failed");
+        }
+        AsymmetricKeyFormat::Pkcs8Der => {
+            elliptic_curve::SecretKey::from_sec1_der(&key)
+                .context("init pkcs der private key failed")?
+                .to_vec()
+        }
+        _ => {
+            return Err(Error::Unsupported(format!(
+                "ec private key format {:?}",
+                format
+            )))
+        }
+    })
 }
 
 fn export_ecc_private_key<C>(
