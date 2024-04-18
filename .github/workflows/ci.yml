@@ -1,9 +1,30 @@
 name: publish
 
 on:
-  pull_request_target:
-    types: [closed]
+  push:
+    tags:
+      - 'v*.*.*'
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - '.vscode'
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - '.vscode'
     
+permissions:
+  actions: write
+  contents: write
+  security-events: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   project:
     uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust-tauri.yml@master
