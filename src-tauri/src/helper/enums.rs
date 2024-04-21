@@ -31,6 +31,41 @@ pub enum AsymmetricKeyFormat {
     Pkcs8Der,
 }
 
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+pub enum BaseKeyFormat {
+    #[serde(rename = "pkcs8")]
+    Pkcs8,
+    #[serde(rename = "spki")]
+    Spki,
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+pub enum RsaKeyFormat {
+    BaseKeyFormat(BaseKeyFormat),
+    #[serde(rename = "pkcs1")]
+    Pkcs1,
+}
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+pub enum EccKeyFormat {
+    BaseKeyFormat(BaseKeyFormat),
+    #[serde(rename = "sec1")]
+    Sec1,
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+pub enum KeyEncoding {
+    #[serde(rename = "pem")]
+    Pem,
+    #[serde(rename = "der")]
+    Der,
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+pub enum EciesEncryptionAlgorithm {
+    #[serde(rename = "AES-256-GCM")]
+    Aes256Gcm,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum RsaEncryptionPadding {
     #[serde(rename = "pkcs1-v1_5")]

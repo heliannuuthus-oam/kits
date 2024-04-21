@@ -219,7 +219,7 @@ fn private_key_to_bytes(
         match format {
             AsymmetricKeyFormat::Pkcs1Pem => Zeroizing::new(
                 private_key
-                    .to_pkcs1_pem(pkcs8::LineEnding::LF)
+                    .to_pkcs1_pem(base64ct::LineEnding::LF)
                     .context("generate rsa key to pkcs1 pem failed")?
                     .as_bytes()
                     .to_vec(),
@@ -230,7 +230,7 @@ fn private_key_to_bytes(
                 .to_bytes(),
             AsymmetricKeyFormat::Pkcs8Pem => Zeroizing::new(
                 private_key
-                    .to_pkcs8_pem(pkcs8::LineEnding::LF)
+                    .to_pkcs8_pem(base64ct::LineEnding::LF)
                     .context("generate rsa key to pkcs8 pem failed")?
                     .as_bytes()
                     .to_vec(),
@@ -275,7 +275,7 @@ fn public_key_to_bytes(
 ) -> Result<ByteBuf> {
     Ok(ByteBuf::from(match format {
         AsymmetricKeyFormat::Pkcs1Pem => public_key
-            .to_pkcs1_pem(pkcs8::LineEnding::LF)
+            .to_pkcs1_pem(base64ct::LineEnding::LF)
             .context("derive rsa key to pkcs1 pem failed")?
             .as_bytes()
             .to_vec(),
@@ -284,7 +284,7 @@ fn public_key_to_bytes(
             .context("derive rsa key to pkcs1 der failed")?
             .to_vec(),
         AsymmetricKeyFormat::Pkcs8Pem => public_key
-            .to_public_key_pem(pkcs8::LineEnding::LF)
+            .to_public_key_pem(base64ct::LineEnding::LF)
             .context("derive rsa key to pkcs8 pem failed")?
             .into_bytes(),
         AsymmetricKeyFormat::Pkcs8Der => public_key
