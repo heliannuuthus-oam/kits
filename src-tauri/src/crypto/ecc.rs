@@ -1,9 +1,16 @@
+use aes_gcm::{
+    aead::{Aead, AeadMutInPlace},
+    AeadCore, Aes256Gcm,
+};
 use anyhow::Context;
-use elliptic_curve::{AffinePoint, SecretKey};
+use der::Encode;
+use digest::KeyInit;
+use elliptic_curve::{zeroize::Zeroizing, AffinePoint, SecretKey};
 use p256::NistP256;
+use p384::NistP384;
 use pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey};
 use serde_bytes::ByteBuf;
-use spki::DecodePublicKey;
+use spki::{der::EncodePem, DecodePublicKey};
 
 use crate::helper::{
     common::KeyTuple,
@@ -18,113 +25,91 @@ use crate::helper::{
 pub fn generate_ecc(
     curve_name: EccCurveName,
     format: EccKeyFormat,
-    codec: KeyEncoding,
+    encoding: KeyEncoding,
 ) -> Result<KeyTuple> {
     let mut rng = rand::thread_rng();
 
-    let (private_key, public_key) = match curve_name {
+    match curve_name {
         EccCurveName::NistP256 => {
-            let secret_key = p256::SecretKey::random(&mut rng);
-            let private_key =
-                export_ecc_private_key(&secret_key, format, codec)?;
-            let public_secret_key = secret_key.public_key();
-            let public_key = export_ecc_public_key(public_secret_key, codec)?;
-            (private_key, public_key)
+            generate_ecc_key::<NistP256>(format, encoding)
         }
         EccCurveName::NistP384 => {
-            let secret_key = p384::SecretKey::random(&mut rng);
-            let private_key =
-                export_ecc_private_key(&secret_key, format, codec)?;
-            let public_secret_key = secret_key.public_key();
-            let public_key = export_ecc_public_key(public_secret_key, codec)?;
-            (private_key, public_key)
+            generate_ecc_key::<p384::NistP384>(format, encoding)
         }
         EccCurveName::NistP521 => {
-            let secret_key = p521::SecretKey::random(&mut rng);
-            let private_key =
-                export_ecc_private_key(&secret_key, format, codec)?;
-            let public_secret_key = secret_key.public_key();
-            let public_key = export_ecc_public_key(public_secret_key, codec)?;
-            (private_key, public_key)
+            generate_ecc_key::<p521::NistP521>(format, encoding)
         }
         EccCurveName::Secp256k1 => {
-            let secret_key = k256::SecretKey::random(&mut rng);
-            let private_key =
-                export_ecc_private_key(&secret_key, format, codec)?;
-            let public_secret_key = secret_key.public_key();
-            let public_key = export_ecc_public_key(public_secret_key, codec)?;
-            (private_key, public_key)
+            generate_ecc_key::<k256::Secp256k1>(format, encoding)
         }
-        EccCurveName::Curve25519 => match format {
-            KeyFormat::Pkcs8 => {
-                match codec {
-                    KeyEncoding::Pem => {
-                        let secret_key =
-                            ed25519_dalek::SigningKey::generate(&mut rng);
-                        let private_key = secret_key
-                            .to_pkcs8_pem(base64ct::LineEnding::LF)
-                            .context(
-                                "init curve 25519 private key to pkcs8 pem \
-                                 failed",
-                            )?
-                            .as_bytes()
-                            .to_vec();
-                        let verifying_key = secret_key.verifying_key();
-                        let public_key = verifying_key
-                            .to_public_key_pem(base64ct::LineEnding::LF)
-                            .context(
-                                "init curve 25519 public key to spki pem \
-                                 failed",
-                            )?
-                            .as_bytes()
-                            .to_vec();
-                        (private_key, public_key)
-                    }
+        EccCurveName::Curve25519 => todo!(),
+    }
+    //     EccCurveName::Curve25519 => match format {
+    //         KeyFormat::Pkcs8 => {
+    //             match encoding {
+    //                 KeyEncoding::Pem => {
+    //                     let secret_key =
+    //                         ed25519_dalek::SigningKey::generate(&mut rng);
+    //                     let private_key = secret_key
+    //                         .to_pkcs8_pem(base64ct::LineEnding::LF)
+    //                         .context(
+    //                             "init curve 25519 private key to pkcs8 pem \
+    //                              failed",
+    //                         )?
+    //                         .as_bytes()
+    //                         .to_vec();
+    //                     let verifying_key = secret_key.verifying_key();
+    //                     let public_key = verifying_key
+    //                         .to_public_key_pem(base64ct::LineEnding::LF)
+    //                         .context(
+    //                             "init curve 25519 public key to spki pem \
+    //                              failed",
+    //                         )?
+    //                         .as_bytes()
+    //                         .to_vec();
+    //                     (private_key, public_key)
+    //                 }
 
-                    KeyEncoding::Der =>
-                    // just random bytes, length 32
-                    {
-                        let signing_key =
-                            ed25519_dalek::SigningKey::generate(&mut rng);
-                        let private_key = signing_key
-                            .to_pkcs8_der()
-                            .context(
-                                "init curve 25519 private key to pkcs8 der \
-                                 failed",
-                            )?
-                            .to_bytes()
-                            .to_vec();
+    //                 KeyEncoding::Der =>
+    //                 // just random bytes, length 32
+    //                 {
+    //                     let signing_key =
+    //                         ed25519_dalek::SigningKey::generate(&mut rng);
+    //                     let private_key = signing_key
+    //                         .to_pkcs8_der()
+    //                         .context(
+    //                             "init curve 25519 private key to pkcs8 der \
+    //                              failed",
+    //                         )?
+    //                         .to_bytes()
+    //                         .to_vec();
 
-                        let verifying_key = signing_key.verifying_key();
-                        let public_key = verifying_key
-                            .to_public_key_der()
-                            .context(
-                                "init curve 25519 public key to spki der \
-                                 failed",
-                            )?
-                            .to_vec();
-                        (private_key, public_key)
-                    }
-                }
-            }
+    //                     let verifying_key = signing_key.verifying_key();
+    //                     let public_key = verifying_key
+    //                         .to_public_key_der()
+    //                         .context(
+    //                             "init curve 25519 public key to spki der \
+    //                              failed",
+    //                         )?
+    //                         .to_vec();
+    //                     (private_key, public_key)
+    //                 }
+    //             }
+    //         }
 
-            _ => {
-                return Err(Error::Unsupported(format!(
-                    "curve 25519 private key format {:?}",
-                    format
-                )))
-            }
-        },
-    };
-    Ok(KeyTuple(
-        ByteBuf::from(private_key),
-        ByteBuf::from(public_key),
-    ))
+    //         _ => {
+    //             return Err(Error::Unsupported(format!(
+    //                 "curve 25519 private key format {:?}",
+    //                 format
+    //             )))
+    //         }
+    //     },
+    // }
 }
 
 pub fn ecies<C>(
+    plaintext: ByteBuf,
     input: ByteBuf,
-    curve_name: EccCurveName,
     format: EccKeyFormat,
     encoding: KeyEncoding,
     ea: EciesEncryptionAlgorithm,
@@ -137,13 +122,58 @@ where
         + elliptic_curve::sec1::ToEncodedPoint<C>,
     elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
 {
-    if (for_encryption) {
-        let public_key = import_ecc_public_key(&input, encoding);
-  
+    let mut rng = rand::thread_rng();
+    let secret_key = elliptic_curve::SecretKey::<C>::random(&mut rng);
+    let shared_secret = if for_encryption {
+        let public_key = import_ecc_public_key::<C>(&input, encoding)?;
+        elliptic_curve::ecdh::diffie_hellman(
+            secret_key.to_nonzero_scalar(),
+            public_key.as_affine(),
+        )
     } else {
         let private_key =
-            import_ecc_private_key::<NistP256>(&input, format, encoding)?;
-        elliptic_curve::ecdh::diffie_hellman(private_key, public_key)  }
+            import_ecc_private_key::<C>(&input, format, encoding)?;
+        elliptic_curve::ecdh::diffie_hellman(
+            private_key.to_nonzero_scalar(),
+            secret_key.public_key().as_affine(),
+        )
+    };
+    let shared_secret_bytes = shared_secret.raw_secret_bytes();
+    Ok(ByteBuf::from(match ea {
+        EciesEncryptionAlgorithm::Aes256Gcm => {
+            let mut cipher =
+                Aes256Gcm::new_from_slice(shared_secret_bytes).context("")?;
+            let nonce = Aes256Gcm::generate_nonce(&mut rng);
+            let mut payload = plaintext.to_vec();
+            cipher
+                .encrypt_in_place(&nonce, b"", &mut payload)
+                .context("encrypt failed")?;
+            payload
+        }
+    }))
+}
+
+fn generate_ecc_key<C>(
+    format: EccKeyFormat,
+    encoding: KeyEncoding,
+) -> Result<KeyTuple>
+where
+    C: elliptic_curve::Curve,
+    C: elliptic_curve::CurveArithmetic + pkcs8::AssociatedOid,
+    AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
+        + elliptic_curve::sec1::ToEncodedPoint<C>,
+    elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
+{
+    let mut rng = rand::thread_rng();
+    let secret_key = elliptic_curve::SecretKey::<C>::random(&mut rng);
+
+    let private_key = export_ecc_private_key(&secret_key, format, encoding)?;
+    let public_secret_key = secret_key.public_key();
+    let public_key = export_ecc_public_key(public_secret_key, encoding)?;
+    Ok(KeyTuple(
+        ByteBuf::from(private_key),
+        ByteBuf::from(public_key),
+    ))
 }
 
 fn import_ecc_private_key<C>(
@@ -352,9 +382,11 @@ where
 
 #[cfg(test)]
 mod test {
+    use der::{pem::PemLabel, Encode};
     use pkcs8::EncodePublicKey;
     use tracing::info;
     use tracing_test::traced_test;
+    use zeroize::Zeroizing;
 
     #[test]
     #[traced_test]
@@ -395,6 +427,36 @@ mod test {
         info!(
             "\n ================== shared key len ============== \n{:?}",
             shared_key_bytes.len()
+        );
+    }
+
+    #[test]
+    #[traced_test]
+    fn test_generate_curve_25519_and_encryption() {
+        let mut rng = rand::thread_rng();
+        let signing_key = ed25519_dalek::SigningKey::generate(&mut rng);
+        let private_key_bytes = Zeroizing::new(signing_key.to_bytes());
+        let verifying_key = signing_key.verifying_key();
+        let public_key_bytes = verifying_key.as_bytes();
+
+        let cc = private_key_bytes.to_vec();
+        let ec_private_key: Zeroizing<Vec<u8>> = Zeroizing::new(
+            sec1::EcPrivateKey {
+                private_key: &cc,
+                parameters: None,
+                public_key: Some(public_key_bytes),
+            }
+            .to_der()
+            .expect("cc"),
+        );
+        let cc = pem::Pem::new(
+            sec1::EcPrivateKey::PEM_LABEL,
+            ec_private_key.to_vec(),
+        );
+
+        info!(
+            "\n ================== secret key ============== \n{}",
+            cc.to_string()
         );
     }
 }
