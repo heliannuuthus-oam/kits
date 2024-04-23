@@ -3,12 +3,13 @@ use aes_gcm::{
     AeadCore, Aes256Gcm,
 };
 use anyhow::Context;
-use der::Encode;
+use der::{pem::PemLabel, Encode};
 use digest::KeyInit;
 use elliptic_curve::{zeroize::Zeroizing, AffinePoint, SecretKey};
 use p256::NistP256;
 use p384::NistP384;
 use pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey};
+use sec1::EncodeEcPrivateKey;
 use serde_bytes::ByteBuf;
 use spki::{der::EncodePem, DecodePublicKey};
 
@@ -239,6 +240,78 @@ where
     })
 }
 
+fn import_curve_25519_private_key(
+    input: &[u8],
+    format: EccKeyFormat,
+    encoding: KeyEncoding,
+) -> Result<ed25519_dalek::SigningKey> {
+    let transfer = |der_bytes| {
+        return sec1::EcPrivateKey::try_from(der_bytes)?
+            .try_into()
+            .context("unprocessed error");
+    };
+
+    Ok(match (format, encoding) {
+        (EccKeyFormat::BaseKeyFormat(_), KeyEncoding::Pem) => {
+            let private_key_str = String::from_utf8(input.to_vec())
+                .context("informal curve 25519 private key")?;
+            ed25519_dalek::SigningKey::from_pkcs8_pem(&private_key_str)
+                .context("informal curve 25519 pkcs8 pem private key")?
+        }
+        (EccKeyFormat::BaseKeyFormat(_), KeyEncoding::Der) => {
+            ed25519_dalek::SigningKey::from_pkcs8_der(input)
+                .context("informal ecc pkcs8 der private key")?
+        }
+        (EccKeyFormat::Sec1, KeyEncoding::Pem) => {
+            let private_key_str = String::from_utf8(input.to_vec())
+                .context("informal ecc pkcs8 private key")?;
+
+            let private_key_pem = pem::parse(&private_key_str)
+                .context("pem parse private key failed")?;
+
+            if private_key_pem.tag() != sec1::EcPrivateKey::PEM_LABEL {
+                return Err(Error::Unsupported(
+                    "unsuppoted sec1 tag".to_string(),
+                ));
+            }
+            let private_key: sec1::EcPrivateKey =
+                transfer(private_key_pem.contents())?;
+
+            ed25519_dalek::SigningKey::from_sec1_pem(&private_key_str)
+                .context("informal ecc sec1 pem private key")?
+        }
+        (EccKeyFormat::Sec1, KeyEncoding::Der) => {
+            ed25519_dalek::SigningKey::from_sec1_der(input)
+                .context("informal ecc sec1 der private key")?
+        }
+    })
+}
+
+fn import_curve_25519_public_key<C>(
+    input: &[u8],
+    from: KeyEncoding,
+) -> Result<elliptic_curve::PublicKey<C>>
+where
+    C: elliptic_curve::Curve,
+    C: elliptic_curve::CurveArithmetic + pkcs8::AssociatedOid,
+    AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
+        + elliptic_curve::sec1::ToEncodedPoint<C>,
+    elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
+{
+    Ok(match from {
+        KeyEncoding::Pem => {
+            let public_key_str = String::from_utf8(input.to_vec())
+                .context("informal ecc public key")?;
+            elliptic_curve::PublicKey::from_public_key_pem(&public_key_str)
+                .context("informal pem public key")?
+        }
+        KeyEncoding::Der => {
+            elliptic_curve::PublicKey::from_public_key_der(input)
+                .context("informal der public key")?
+        }
+    })
+}
+
 fn export_ecc_private_key<C>(
     secret_key: &elliptic_curve::SecretKey<C>,
     format: EccKeyFormat,
@@ -279,7 +352,79 @@ where
     })
 }
 
+fn export_curve_25519_private_key<C>(
+    secret_key: &ed25519_dalek::SigningKey,
+    format: EccKeyFormat,
+    codec: KeyEncoding,
+) -> Result<Vec<u8>> {
+    let transfer = |secret_key: &ed25519_dalek::SigningKey| {
+        let private_key_bytes = Zeroizing::new(secret_key.to_bytes());
+        let public_key_bytes = secret_key.verifying_key();
+
+        Ok::<Zeroizing<Vec<u8>>>(Zeroizing::new(
+            sec1::EcPrivateKey {
+                private_key: private_key_bytes.as_ref(),
+                parameters: None,
+                public_key: Some(public_key_bytes.as_bytes()),
+            }
+            .to_der()
+            .context("curve_25519 to sec1 private key der failed")?,
+        ))
+    };
+
+    Ok(match format {
+        EccKeyFormat::BaseKeyFormat(_) => match codec {
+            KeyEncoding::Pem => secret_key
+                .to_pkcs8_pem(base64ct::LineEnding::LF)
+                .context("export ecc pkcs8 pem private key failed")?
+                .as_bytes()
+                .to_vec(),
+            KeyEncoding::Der => secret_key
+                .to_pkcs8_der()
+                .context("export ecc pkcs8 der private key failed")?
+                .as_bytes()
+                .to_vec(),
+        },
+        EccKeyFormat::Sec1 => match codec {
+            KeyEncoding::Pem => {
+                let ec_private_key: Zeroizing<Vec<u8>> = transfer(secret_key)?;
+                let pem = pem::Pem::new(
+                    sec1::EcPrivateKey::PEM_LABEL,
+                    ec_private_key.as_ref(),
+                );
+                pem::encode(&pem).as_bytes().to_vec()
+            }
+            KeyEncoding::Der => transfer(secret_key)?.to_vec(),
+        },
+    })
+}
+
 fn export_ecc_public_key<C>(
+    public_key: elliptic_curve::PublicKey<C>,
+    codec: KeyEncoding,
+) -> Result<Vec<u8>>
+where
+    C: elliptic_curve::Curve,
+    C: elliptic_curve::CurveArithmetic,
+    AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
+        + elliptic_curve::sec1::ToEncodedPoint<C>,
+    elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
+    elliptic_curve::PublicKey<C>: EncodePublicKey,
+{
+    Ok(match codec {
+        KeyEncoding::Pem => public_key
+            .to_public_key_pem(base64ct::LineEnding::LF)
+            .context("init pem private key failed")?
+            .as_bytes()
+            .to_vec(),
+        KeyEncoding::Der => public_key
+            .to_public_key_der()
+            .context("init der private key failed")?
+            .to_vec(),
+    })
+}
+
+fn export_curve_25519_public_key<C>(
     public_key: elliptic_curve::PublicKey<C>,
     codec: KeyEncoding,
 ) -> Result<Vec<u8>>
@@ -447,7 +592,7 @@ mod test {
                 public_key: Some(public_key_bytes),
             }
             .to_der()
-            .expect("cc"),
+            .expect("init sec1 ec private key failed"),
         );
         let cc = pem::Pem::new(
             sec1::EcPrivateKey::PEM_LABEL,
