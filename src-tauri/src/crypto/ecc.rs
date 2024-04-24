@@ -3,7 +3,7 @@ use anyhow::Context;
 use base64ct::Encoding;
 use der::{pem::PemLabel, Encode};
 use digest::KeyInit;
-use elliptic_curve::{zeroize::Zeroizing, AffinePoint};
+use elliptic_curve::{sec1::ToEncodedPoint, zeroize::Zeroizing, AffinePoint};
 use p256::NistP256;
 use pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey};
 use rsa::signature::Keypair;
@@ -118,12 +118,12 @@ where
         let mut result = Vec::new();
         let recevicer_secret_key = elliptic_curve::SecretKey::<C>::random(&mut rng);
        let recevicer_public_key= recevicer_secret_key.public_key();
+       recevicer_public_key.to_public_key_der(false)
         let public_key = import_ecc_public_key::<C>(&key, encoding)?;
         let shared_secret = elliptic_curve::ecdh::diffie_hellman(
           recevicer_secret_key.to_nonzero_scalar(),
             public_key.as_affine(),
         );
-        recevicer_public_key.to_encoded_point(compress);
         let shared_secret_bytes = shared_secret.raw_secret_bytes();
         let cipher = Aes256Gcm::new_from_slice(shared_secret_bytes)
             .context("init aes 256 gcm cipher failed")?;
@@ -136,8 +136,6 @@ where
         result.extend_from_slice(&payload);
         result
     } else {
-      
-
         let mut receiver_public_secret = [0; 32];
         receiver_public_secret.copy_from_slice(&input[.. 32]);
         let private_key = import_ecc_private_key::<C>(&key, format, encoding)?;
@@ -200,6 +198,7 @@ pub fn curve_25519_ecies_inner(
         let receiver_secret_key =
             x25519_dalek::EphemeralSecret::random_from_rng(&mut rng);
         let verifying_key = import_curve_25519_public_key(key, encoding)?;
+        verifying_key.to_public_key_der()
         let public_key = x25519_dalek::PublicKey::from(
             verifying_key.to_montgomery().to_bytes(),
         );
@@ -739,3 +738,4 @@ mod test {
         }
     }
 }
+
