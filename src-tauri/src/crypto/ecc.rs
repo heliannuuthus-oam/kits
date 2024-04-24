@@ -121,6 +121,9 @@ where
         let octet_string = recevicer_public_key.to_sec1_bytes();
 
         info!("octet string length: {}", octet_string.len());
+
+        result.extend_from_slice(&octet_string);
+
         let public_key = import_ecc_public_key::<C>(&key, encoding)?;
         let shared_secret = elliptic_curve::ecdh::diffie_hellman(
             recevicer_secret_key.to_nonzero_scalar(),
@@ -135,13 +138,14 @@ where
         cipher
             .encrypt_in_place(&nonce, b"", &mut payload)
             .context("encrypt failed")?;
+        info!("payload length: {}", payload.len());
         result.extend_from_slice(&payload);
         result
     } else {
-        let mut receiver_public_secret_bytes = [0; 32];
-        receiver_public_secret_bytes.copy_from_slice(&input[.. 32]);
+        info!("input length: {}", input.len());
+        let mut receiver_public_secret_bytes = [0; 65];
+        receiver_public_secret_bytes.copy_from_slice(&input[.. 65]);
         let private_key = import_ecc_private_key::<C>(&key, format, encoding)?;
-
         let receiver_public_secret = import_ecc_public_key::<C>(
             &receiver_public_secret_bytes,
             encoding,
