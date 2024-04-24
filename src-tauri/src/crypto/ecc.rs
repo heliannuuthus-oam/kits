@@ -98,42 +98,86 @@ pub fn ecies(
 }
 
 pub fn ecies_inner<C>(
-    plaintext: ByteBuf,
+    input: ByteBuf,
     key: ByteBuf,
     format: EccKeyFormat,
     encoding: KeyEncoding,
     ea: EciesEncryptionAlgorithm,
     for_encryption: bool,
 ) -> Result<ByteBuf>
-    where
-        C: elliptic_curve::Curve,
-        C: elliptic_curve::CurveArithmetic + pkcs8::AssociatedOid,
-        AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
+where
+    C: elliptic_curve::Curve,
+    C: elliptic_curve::CurveArithmetic + pkcs8::AssociatedOid,
+    AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
         + elliptic_curve::sec1::ToEncodedPoint<C>,
-        elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
+    elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
 {
     let mut rng = rand::thread_rng();
-    let secret_key = elliptic_curve::SecretKey::<C>::random(&mut rng);
+   
     let shared_secret = if for_encryption {
+        let mut result = Vec::new();
+        let recevicer_secret_key = elliptic_curve::SecretKey::<C>::random(&mut rng);
+       let recevicer_public_key= recevicer_secret_key.public_key();
         let public_key = import_ecc_public_key::<C>(&key, encoding)?;
-        elliptic_curve::ecdh::diffie_hellman(
-            secret_key.to_nonzero_scalar(),
+        let shared_secret = elliptic_curve::ecdh::diffie_hellman(
+          recevicer_secret_key.to_nonzero_scalar(),
             public_key.as_affine(),
-        )
+        );
+        recevicer_public_key.to_encoded_point(compress);
+        let shared_secret_bytes = shared_secret.raw_secret_bytes();
+        let cipher = Aes256Gcm::new_from_slice(shared_secret_bytes)
+            .context("init aes 256 gcm cipher failed")?;
+        let nonce = Aes256Gcm::generate_nonce(&mut rng);
+        result.extend_from_slice(nonce.as_slice());
+        let mut payload = input.to_vec();
+        cipher
+            .encrypt_in_place(&nonce, b"", &mut payload)
+            .context("encrypt failed")?;
+        result.extend_from_slice(&payload);
+        result
     } else {
+      
+
+        let mut receiver_public_secret = [0; 32];
+        receiver_public_secret.copy_from_slice(&input[.. 32]);
         let private_key = import_ecc_private_key::<C>(&key, format, encoding)?;
-        elliptic_curve::ecdh::diffie_hellman(
+
+        import_ecc_public_key(receiver_public_secret, from);
+
+        let shared_secret = elliptic_curve::ecdh::diffie_hellman(
             private_key.to_nonzero_scalar(),
             secret_key.public_key().as_affine(),
-        )
+        );
+        let private_key =
+            x25519_dalek::StaticSecret::from(signing_key.to_scalar_bytes());
+        let public_key = x25519_dalek::PublicKey::from(receiver_public_secret);
+        let shared_secret = private_key.diffie_hellman(&public_key);
+        let shared_secret_bytes = shared_secret.as_bytes();
+        info!(
+            "decryption shared_secret_bytes: {}",
+            base64ct::Base64::encode_string(shared_secret_bytes)
+        );
+        let cipher = Aes256Gcm::new_from_slice(shared_secret_bytes)
+            .context("init aes 256 gcm cipher failed")?;
+        let mut nonce_bytes: [u8; 12] = [0; 12];
+        nonce_bytes.copy_from_slice(&input[32 .. 32 + 12]);
+        let nonce = Nonce::from_slice(&nonce_bytes);
+        let mut ciphertext: Vec<u8> = vec![0; input[32 + 12 ..].len()];
+        ciphertext.copy_from_slice(&input[32 + 12 ..]);
+        cipher
+            .decrypt_in_place(nonce, b"", &mut ciphertext)
+            .context("decrypt failed")?;
+        ciphertext
+        let shared_secret_bytes = shared_secret.raw_secret_bytes();
+
     };
     let shared_secret_bytes = shared_secret.raw_secret_bytes();
     Ok(ByteBuf::from(match ea {
         EciesEncryptionAlgorithm::Aes256Gcm => {
-            let mut cipher =
+            let cipher =
                 Aes256Gcm::new_from_slice(shared_secret_bytes).context("")?;
             let nonce = Aes256Gcm::generate_nonce(&mut rng);
-            let mut payload = plaintext.to_vec();
+            let mut payload = input.to_vec();
             cipher
                 .encrypt_in_place(&nonce, b"", &mut payload)
                 .context("encrypt failed")?;
@@ -159,14 +203,13 @@ pub fn curve_25519_ecies_inner(
         let public_key = x25519_dalek::PublicKey::from(
             verifying_key.to_montgomery().to_bytes(),
         );
-        info!("encryption public key: {}", base64ct::Base64::encode_string(public_key.as_bytes()));
-        let receiver_public_key = x25519_dalek::PublicKey::from(&receiver_secret_key);
+        let receiver_public_key =
+            x25519_dalek::PublicKey::from(&receiver_secret_key);
         result.extend_from_slice(receiver_public_key.as_bytes());
         let shared_secret = receiver_secret_key.diffie_hellman(&public_key);
         let shared_secret_bytes = shared_secret.as_bytes();
-        info!("encryption shared_secret_bytes: {}", base64ct::Base64::encode_string(shared_secret_bytes));
-        let mut cipher =
-            Aes256Gcm::new_from_slice(shared_secret_bytes).context("init aes 256 gcm cipher failed")?;
+        let cipher = Aes256Gcm::new_from_slice(shared_secret_bytes)
+            .context("init aes 256 gcm cipher failed")?;
         let nonce = Aes256Gcm::generate_nonce(&mut rng);
         result.extend_from_slice(nonce.as_slice());
         let mut payload = input.to_vec();
@@ -177,26 +220,27 @@ pub fn curve_25519_ecies_inner(
         result
     } else {
         let mut receiver_secret = [0; 32];
-        receiver_secret.copy_from_slice(&input[..32]);
-        info!("decryption public key: {}", base64ct::Base64::encode_string(&receiver_secret));
-
+        receiver_secret.copy_from_slice(&input[.. 32]);
         let signing_key =
-            import_curve_25519_private_key(&key, format, encoding)?;
+            import_curve_25519_private_key(key, format, encoding)?;
         let private_key =
             x25519_dalek::StaticSecret::from(signing_key.to_scalar_bytes());
         let public_key = x25519_dalek::PublicKey::from(receiver_secret);
         let shared_secret = private_key.diffie_hellman(&public_key);
         let shared_secret_bytes = shared_secret.as_bytes();
-        info!("decryption shared_secret_bytes: {}", base64ct::Base64::encode_string(shared_secret_bytes));
-        let mut cipher =
-            Aes256Gcm::new_from_slice(shared_secret_bytes).context("init aes 256 gcm cipher failed")?;
+        info!(
+            "decryption shared_secret_bytes: {}",
+            base64ct::Base64::encode_string(shared_secret_bytes)
+        );
+        let cipher = Aes256Gcm::new_from_slice(shared_secret_bytes)
+            .context("init aes 256 gcm cipher failed")?;
         let mut nonce_bytes: [u8; 12] = [0; 12];
-        nonce_bytes.copy_from_slice(&input[32..32 + 12]);
+        nonce_bytes.copy_from_slice(&input[32 .. 32 + 12]);
         let nonce = Nonce::from_slice(&nonce_bytes);
-        let mut ciphertext: Vec<u8> = vec![0; input[32 + 12..].len()];
-        ciphertext.copy_from_slice(&input[32 + 12..]);
+        let mut ciphertext: Vec<u8> = vec![0; input[32 + 12 ..].len()];
+        ciphertext.copy_from_slice(&input[32 + 12 ..]);
         cipher
-            .decrypt_in_place(&nonce, b"", &mut ciphertext)
+            .decrypt_in_place(nonce, b"", &mut ciphertext)
             .context("decrypt failed")?;
         ciphertext
     };
@@ -207,12 +251,12 @@ fn generate_ecc_key<C>(
     format: EccKeyFormat,
     encoding: KeyEncoding,
 ) -> Result<KeyTuple>
-    where
-        C: elliptic_curve::Curve,
-        C: elliptic_curve::CurveArithmetic + pkcs8::AssociatedOid,
-        AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
+where
+    C: elliptic_curve::Curve,
+    C: elliptic_curve::CurveArithmetic + pkcs8::AssociatedOid,
+    AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
         + elliptic_curve::sec1::ToEncodedPoint<C>,
-        elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
+    elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
 {
     let mut rng = rand::thread_rng();
     let secret_key = elliptic_curve::SecretKey::<C>::random(&mut rng);
@@ -249,12 +293,12 @@ fn import_ecc_private_key<C>(
     format: EccKeyFormat,
     encoding: KeyEncoding,
 ) -> Result<elliptic_curve::SecretKey<C>>
-    where
-        C: elliptic_curve::Curve,
-        C: elliptic_curve::CurveArithmetic + pkcs8::AssociatedOid,
-        AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
+where
+    C: elliptic_curve::Curve,
+    C: elliptic_curve::CurveArithmetic + pkcs8::AssociatedOid,
+    AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
         + elliptic_curve::sec1::ToEncodedPoint<C>,
-        elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
+    elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
 {
     Ok(match (format, encoding) {
         (EccKeyFormat::BaseKeyFormat(_), KeyEncoding::Pem) => {
@@ -319,13 +363,13 @@ fn import_curve_25519_private_key(
             let sec1_private_key: sec1::EcPrivateKey =
                 transfer(private_key_pem.contents())?;
             let mut private_key: ed25519_dalek::SecretKey = [0; 32];
-            private_key[..32].clone_from_slice(sec1_private_key.private_key);
+            private_key[.. 32].clone_from_slice(sec1_private_key.private_key);
             ed25519_dalek::SigningKey::from_bytes(&private_key)
         }
         (EccKeyFormat::Sec1, KeyEncoding::Der) => {
             let sec1_private_key = transfer(input)?;
             let mut private_key: ed25519_dalek::SecretKey = [0; 32];
-            private_key[..32].clone_from_slice(sec1_private_key.private_key);
+            private_key[.. 32].clone_from_slice(sec1_private_key.private_key);
             ed25519_dalek::SigningKey::from_bytes(&private_key)
         }
     })
@@ -335,12 +379,12 @@ fn import_ecc_public_key<C>(
     input: &[u8],
     from: KeyEncoding,
 ) -> Result<elliptic_curve::PublicKey<C>>
-    where
-        C: elliptic_curve::Curve,
-        C: elliptic_curve::CurveArithmetic + pkcs8::AssociatedOid,
-        AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
+where
+    C: elliptic_curve::Curve,
+    C: elliptic_curve::CurveArithmetic + pkcs8::AssociatedOid,
+    AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
         + elliptic_curve::sec1::ToEncodedPoint<C>,
-        elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
+    elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
 {
     Ok(match from {
         KeyEncoding::Pem => {
@@ -380,13 +424,13 @@ fn export_ecc_private_key<C>(
     format: EccKeyFormat,
     codec: KeyEncoding,
 ) -> Result<Vec<u8>>
-    where
-        C: elliptic_curve::Curve
+where
+    C: elliptic_curve::Curve
         + elliptic_curve::CurveArithmetic
         + pkcs8::AssociatedOid,
-        AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
+    AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
         + elliptic_curve::sec1::ToEncodedPoint<C>,
-        elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
+    elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
 {
     Ok(match format {
         EccKeyFormat::BaseKeyFormat(_) => match codec {
@@ -429,8 +473,8 @@ fn export_curve_25519_private_key(
                 parameters: None,
                 public_key: Some(public_key_bytes.as_bytes()),
             }
-                .to_der()
-                .context("curve_25519 to sec1 private key der failed")?,
+            .to_der()
+            .context("curve_25519 to sec1 private key der failed")?,
         );
         Ok(cc)
     };
@@ -469,13 +513,13 @@ fn export_ecc_public_key<C>(
     public_key: elliptic_curve::PublicKey<C>,
     codec: KeyEncoding,
 ) -> Result<Vec<u8>>
-    where
-        C: elliptic_curve::Curve,
-        C: elliptic_curve::CurveArithmetic,
-        AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
+where
+    C: elliptic_curve::Curve,
+    C: elliptic_curve::CurveArithmetic,
+    AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
         + elliptic_curve::sec1::ToEncodedPoint<C>,
-        elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
-        elliptic_curve::PublicKey<C>: EncodePublicKey,
+    elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
+    elliptic_curve::PublicKey<C>: EncodePublicKey,
 {
     Ok(match codec {
         KeyEncoding::Pem => public_key
@@ -513,8 +557,8 @@ fn public_key_transfer<C>(
     from: KeyEncoding,
     to: KeyEncoding,
 ) -> Result<Vec<u8>>
-    where
-        C: spki::DecodePublicKey
+where
+    C: spki::DecodePublicKey
         + pkcs8::DecodePublicKey
         + spki::EncodePublicKey
         + pkcs8::EncodePublicKey,
@@ -546,8 +590,8 @@ fn public_key_transfer<C>(
 }
 
 fn pem_to_der<E>(input: E, is_public: bool) -> Result<ByteBuf>
-    where
-        E: spki::EncodePublicKey + pkcs8::EncodePrivateKey,
+where
+    E: spki::EncodePublicKey + pkcs8::EncodePrivateKey,
 {
     Ok(ByteBuf::from(if is_public {
         input
@@ -565,8 +609,8 @@ fn pem_to_der<E>(input: E, is_public: bool) -> Result<ByteBuf>
 }
 
 fn der_to_pem<E>(input: E, is_public: bool) -> Result<ByteBuf>
-    where
-        E: spki::EncodePublicKey + pkcs8::EncodePrivateKey,
+where
+    E: spki::EncodePublicKey + pkcs8::EncodePrivateKey,
 {
     Ok(ByteBuf::from(if is_public {
         input
@@ -592,7 +636,9 @@ mod test {
 
     use crate::{
         crypto::ecc::{ecies, generate_ecc},
-        helper::enums::{EccKeyFormat, EciesEncryptionAlgorithm, KeyEncoding},
+        helper::enums::{
+            EccCurveName, EccKeyFormat, EciesEncryptionAlgorithm, KeyEncoding,
+        },
     };
 
     #[test]
@@ -639,50 +685,57 @@ mod test {
 
     #[test]
     #[traced_test]
-    fn test_generate_curve_25519_and_encryption() {
-        let key = generate_ecc(
-            crate::helper::enums::EccCurveName::Curve25519,
-            EccKeyFormat::Sec1,
-            KeyEncoding::Pem,
-        )
-            .expect("generate ecc key failed");
+    fn test_generate_and_encryption() {
+        for curve_name in [
+            EccCurveName::NistP256,
+            EccCurveName::NistP384,
+            EccCurveName::NistP521,
+            EccCurveName::Secp256k1,
+            EccCurveName::Curve25519,
+        ] {
+            info!("start test curve_name: {:?}", curve_name);
+            for key_format in [
+                EccKeyFormat::BaseKeyFormat(
+                    crate::helper::enums::BaseKeyFormat::Pkcs8,
+                ),
+                EccKeyFormat::Sec1,
+            ] {
+                for key_encoding in [KeyEncoding::Pem, KeyEncoding::Der] {
+                    let key =
+                        generate_ecc(curve_name, key_format, key_encoding)
+                            .unwrap_or_else(|_| {
+                                panic!("generate {:?} key failed", curve_name)
+                            });
 
-        let private_key = String::from_utf8(key.0.clone().into_vec())
-            .expect("ecc key to utf8 failed");
-        let public_key = String::from_utf8(key.1.clone().into_vec())
-            .expect("ecc key to utf8 failed");
+                    let cipher = ecies(
+                        curve_name,
+                        key.1,
+                        ByteBuf::from(b"plaintext"),
+                        key_format,
+                        key_encoding,
+                        EciesEncryptionAlgorithm::Aes256Gcm,
+                        true,
+                    )
+                    .unwrap_or_else(|_| {
+                        panic!("{:?} ecies encryption failed", curve_name)
+                    });
 
-        info!(
-            "\n ================== secret key ============== \n{}",
-            private_key
-        );
-        info!(
-            "\n ================== public key ============== \n{}",
-            public_key
-        );
-
-        let cipher = ecies(
-            crate::helper::enums::EccCurveName::Curve25519,
-            key.1,
-            ByteBuf::from(b"plaintext"),
-            EccKeyFormat::Sec1,
-            KeyEncoding::Pem,
-            EciesEncryptionAlgorithm::Aes256Gcm,
-            true,
-        )
-            .expect("curve 25519 ecies encryption failed");
-
-        let plaintext = ecies(
-            crate::helper::enums::EccCurveName::Curve25519,
-            key.0,
-            cipher,
-            EccKeyFormat::Sec1,
-            KeyEncoding::Pem,
-            EciesEncryptionAlgorithm::Aes256Gcm,
-            false,
-        )
-            .expect("curve 25519 ecies decryption failed");
-        let result = String::from_utf8_lossy(&plaintext);
-        assert_eq!(result, "plaintext")
+                    let plaintext = ecies(
+                        curve_name,
+                        key.0,
+                        cipher,
+                        EccKeyFormat::Sec1,
+                        key_encoding,
+                        EciesEncryptionAlgorithm::Aes256Gcm,
+                        false,
+                    )
+                    .unwrap_or_else(|_| {
+                        panic!("{:?} ecies decryption failed", curve_name)
+                    });
+                    let result = String::from_utf8_lossy(&plaintext);
+                    assert_eq!(result, "plaintext")
+                }
+            }
+        }
     }
 }

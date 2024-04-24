@@ -1,7 +1,7 @@
 use digest::{Digest as Di, DynDigest};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum EccCurveName {
     NistP256,
