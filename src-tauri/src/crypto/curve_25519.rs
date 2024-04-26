@@ -1,11 +1,10 @@
 use anyhow::Context;
 use base64ct::Encoding;
 use der::{pem::PemLabel, Encode};
-use digest::KeyInit;
 use pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey};
 use serde_bytes::ByteBuf;
 use spki::DecodePublicKey;
-use tracing::{debug, info};
+use tracing::debug;
 use zeroize::Zeroizing;
 
 use crate::{
@@ -52,7 +51,7 @@ pub(crate) fn curve_25519_ecies_inner(
     key: &[u8],
     format: EccKeyFormat,
     encoding: KeyEncoding,
-    ea: EciesEncryptionAlgorithm,
+    _ea: EciesEncryptionAlgorithm,
     for_encryption: bool,
 ) -> Result<ByteBuf> {
     let rng = rand::thread_rng();

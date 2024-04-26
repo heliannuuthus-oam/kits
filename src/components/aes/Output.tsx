@@ -7,7 +7,7 @@ import {
 	CharCodecRef,
 	CharFormatter,
 	charCodecor,
-} from "../codec/CharCodec";
+} from "../codec/CharCodecRadio";
 const { Title } = Typography;
 const { TextArea } = Input;
 
@@ -56,8 +56,14 @@ const AesOutput = forwardRef<AesOutputRef, AesOutputProps>((_props, ref) => {
 						ref={codecEl}
 						codecor={charCodecor}
 						props={{ size: size, defaultValue: CharFormatter.Base64 }}
-						setInput={setOutput}
-						getInput={() => output + ""}
+						setInputs={(inputs) => {
+							setOutput(inputs["output"]);
+						}}
+						getInputs={() => {
+							return {
+								output: output + "",
+							};
+						}}
 					/>
 				</Col>
 				<Col>

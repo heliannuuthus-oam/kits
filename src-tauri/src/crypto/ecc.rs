@@ -107,7 +107,7 @@ pub fn ecies_inner<C>(
     key: &[u8],
     format: EccKeyFormat,
     encoding: KeyEncoding,
-    ea: EciesEncryptionAlgorithm,
+    _ea: EciesEncryptionAlgorithm,
     for_encryption: bool,
 ) -> Result<ByteBuf>
 where
@@ -133,7 +133,7 @@ where
             receiver_secret_key.to_nonzero_scalar(),
             public_key.as_affine(),
         );
-        let shared_secret_bytes = shared_secret.raw_secret_bytes();
+        let _shared_secret_bytes = shared_secret.raw_secret_bytes();
         let pkf_key = pbkdf2::pbkdf2_hmac_array::<sha2::Sha512, 44>(
             shared_secret.raw_secret_bytes(),
             SALT.as_bytes(),

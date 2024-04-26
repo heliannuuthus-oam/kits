@@ -19,7 +19,7 @@ import {
 	CharCodecRef,
 	CharFormatter,
 	charCodecor,
-} from "../codec/CharCodec";
+} from "../codec/CharCodecRadio";
 
 const { TextArea } = Input;
 
@@ -56,17 +56,22 @@ const AesInput = ({
 	const [form] = Form.useForm<FormInput>();
 	const [keySize, setKeySize] = useState<number>(128);
 	const [operation, setOperation] = useState<string>("encrypt");
-	const initialValues = { mode: Mode.CBC, padding: Padding.Pkcs7Padding };
+	const initialValues = {
+		mode: Mode.CBC,
+		padding: Padding.Pkcs7Padding,
+		iv: "",
+		key: "",
+	};
 	const codecEl = useRef<CharCodecRef>(null);
 	const mode = Form.useWatch("mode", form);
 	const [notifyApi, notifyContextHodler] = notification.useNotification({
 		stack: { threshold: 1 },
 	});
 
-	const notify = (description: string) => {
+	const notify = (description: unknown) => {
 		notifyApi.error({
 			message: `${operation} failed`,
-			description,
+			description: description as string,
 			duration: 3,
 			placement: "bottomRight",
 		});
@@ -103,21 +108,39 @@ const AesInput = ({
 	];
 
 	const generateKey = async () => {
-		const data: string = await invoke<string>("generate_aes", {
-			keySize: keySize,
-		});
-		form.setFieldsValue({ key: data });
+		try {
+			const dataBytes = await invoke<Uint8Array>("generate_aes", {
+				keySize: keySize,
+			});
+			const data = await charCodecor.encode(
+				codecEl.current?.getFormat() || CharFormatter.Base64,
+				dataBytes
+			);
+
+			form.setFieldsValue({ key: data });
+		} catch (err: unknown) {
+			notify(err);
+		}
 	};
 
 	const generateIv = async () => {
-		const data = await invoke<string>("generate_iv", {
-			size: mode === Mode.CBC ? 16 : 12,
-		});
-		form.setFieldsValue({ iv: data });
+		try {
+			const dataBytes = await invoke<Uint8Array>("generate_iv", {
+				size: mode === Mode.CBC ? 16 : 12,
+			});
+
+			const data = await charCodecor.encode(
+				codecEl.current?.getFormat() || CharFormatter.Base64,
+				dataBytes
+			);
+
+			form.setFieldsValue({ iv: data });
+		} catch (err: unknown) {
+			notify(err);
+		}
 	};
 
 	const encryptOrDecrypt = async () => {
-		console.log("form: ", form.getFieldsValue());
 		form.validateFields({ validateOnly: true }).then((_) =>
 			charCodecor
 				.decode(
@@ -241,27 +264,6 @@ const AesInput = ({
 					</Col>
 				</Row>
 			</Form.Item>
-			<Form.Item key="key">
-				<Space.Compact size={size} style={{ width: "100%" }}>
-					<Form.Item noStyle name="key" hasFeedback rules={keyValidator}>
-						<Input placeholder="input encryption key" />
-					</Form.Item>
-					<Select
-						defaultValue={keySize}
-						onChange={setKeySize}
-						style={{ width: 150 }}
-						options={[
-							{ value: 128, label: <span>128bit</span> },
-							{ value: 256, label: <span>256bit</span> },
-						]}
-					/>
-					<Button style={{ margin: 0 }} onClick={generateKey}>
-						generate key
-					</Button>
-				</Space.Compact>
-			</Form.Item>
-			{renderExtract(mode)}
-
 			<Form.Item key="operation">
 				<Row justify="space-between" align="middle">
 					<Col>
@@ -292,10 +294,10 @@ const AesInput = ({
 												{ value: CharFormatter.Hex, label: <span>hex</span> },
 											],
 							}}
-							setInput={(input: string) =>
-								form.setFieldsValue({ input: input })
+							setInputs={(inputs: Record<string, string>) =>
+								form.setFieldsValue({ ...inputs })
 							}
-							getInput={() => form.getFieldValue("input")}
+							getInputs={() => form.getFieldsValue([["key", "iv"]])}
 						/>
 					</Col>
 					<Col>
@@ -346,6 +348,26 @@ const AesInput = ({
 					</Col>
 				</Row>
 			</Form.Item>
+			<Form.Item key="key">
+				<Space.Compact size={size} style={{ width: "100%" }}>
+					<Form.Item noStyle name="key" hasFeedback rules={keyValidator}>
+						<Input placeholder="input encryption key" />
+					</Form.Item>
+					<Select
+						defaultValue={keySize}
+						onChange={setKeySize}
+						style={{ width: 150 }}
+						options={[
+							{ value: 128, label: <span>128bit</span> },
+							{ value: 256, label: <span>256bit</span> },
+						]}
+					/>
+					<Button style={{ margin: 0 }} onClick={generateKey}>
+						generate key
+					</Button>
+				</Space.Compact>
+			</Form.Item>
+			{renderExtract(mode)}
 
 			<Form.Item key="input">
 				<div

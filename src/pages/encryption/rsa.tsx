@@ -19,7 +19,7 @@ import {
 	CharCodecRef,
 	CharFormatter,
 	charCodecor,
-} from "../../components/codec/CharCodec";
+} from "../../components/codec/CharCodecRadio";
 import { DownOutlined } from "@ant-design/icons";
 
 const DefaultTextArea = ({ style, ...props }: TextAreaProps) => {
@@ -333,10 +333,10 @@ const RsaEncryption = () => {
 									size: size,
 									defaultValue: CharFormatter.Base64,
 								}}
-								setInput={(input: string) =>
+								setInputs={(input: string) =>
 									form.setFieldsValue({ privateKey: input })
 								}
-								getInput={() => form.getFieldValue("privateKey")}
+								getInputs={() => form.getFieldValue("privateKey")}
 							/>
 						</Flex>
 						<Form.Item name="privateKey" rules={keyValidator}>
@@ -393,10 +393,10 @@ const RsaEncryption = () => {
 									size: size,
 									defaultValue: CharFormatter.Base64,
 								}}
-								setInput={(input: string) =>
+								setInputs={(input: string) =>
 									form.setFieldsValue({ publicKey: input })
 								}
-								getInput={() => form.getFieldValue("publicKey")}
+								getInputs={() => form.getFieldValue("publicKey")}
 							/>
 						</Flex>
 						<Form.Item name="publicKey" rules={keyValidator}>
@@ -494,8 +494,8 @@ const RsaEncryption = () => {
 							size: size,
 							defaultValue: CharFormatter.UTF8,
 						}}
-						setInput={(input: string) => form.setFieldsValue({ input })}
-						getInput={() => form.getFieldValue("input")}
+						setInputs={(input: string) => form.setFieldsValue({ input })}
+						getInputs={() => form.getFieldValue("input")}
 					/>
 				</Flex>
 				<Form.Item key="input" name="input" rules={inputValidator}>
@@ -531,8 +531,8 @@ const RsaEncryption = () => {
 							size: size,
 							defaultValue: CharFormatter.Base64,
 						}}
-						setInput={(input: string) => form.setFieldsValue({ output: input })}
-						getInput={() => form.getFieldValue("output")}
+						setInputs={(input: string) => form.setFieldsValue({ output: input })}
+						getInputs={() => form.getFieldValue("output")}
 					/>
 				</Flex>
 				<Form.Item key="output" name="output">
