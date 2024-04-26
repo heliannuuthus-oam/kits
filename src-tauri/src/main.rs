@@ -33,7 +33,7 @@ fn main() -> Result<()> {
             // key generator
             crypto::aes::generate_aes,
             crypto::aes::generate_iv,
-            crypto::ed25519::generate_ed25519,
+            crypto::curve_25519::generate_ed25519,
             crypto::ecc::generate_ecc,
             crypto::rsa::generate_rsa,
             crypto::rsa::derive_rsa,
@@ -42,6 +42,7 @@ fn main() -> Result<()> {
             crypto::aes::decrypt_aes,
             crypto::rsa::encrypt_rsa,
             crypto::rsa::decrypt_rsa,
+            crypto::ecc::ecies,
             // format
             crypto::rsa::transfer_key,
             helper::codec::base64_encode,

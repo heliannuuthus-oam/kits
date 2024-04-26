@@ -1,5 +1,16 @@
 use digest::{Digest as Di, DynDigest};
 use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum EccCurveName {
+    NistP256,
+    NistP384,
+    NistP521,
+    Secp256k1,
+    Curve25519,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum EncryptionMode {
@@ -20,6 +31,41 @@ pub enum AsymmetricKeyFormat {
     Pkcs8Der,
 }
 
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+pub enum BaseKeyFormat {
+    #[serde(rename = "pkcs8")]
+    Pkcs8,
+    #[serde(rename = "spki")]
+    Spki,
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+pub enum RsaKeyFormat {
+    BaseKeyFormat(BaseKeyFormat),
+    #[serde(rename = "pkcs1")]
+    Pkcs1,
+}
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+pub enum EccKeyFormat {
+    BaseKeyFormat(BaseKeyFormat),
+    #[serde(rename = "sec1")]
+    Sec1,
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+pub enum KeyEncoding {
+    #[serde(rename = "pem")]
+    Pem,
+    #[serde(rename = "der")]
+    Der,
+}
+
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+pub enum EciesEncryptionAlgorithm {
+    #[serde(rename = "AES-256-GCM")]
+    Aes256Gcm,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum RsaEncryptionPadding {
     #[serde(rename = "pkcs1-v1_5")]
@@ -35,7 +81,7 @@ pub enum AesEncryptionPadding {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all="kebab-case")]
+#[serde(rename_all = "kebab-case")]
 pub enum Digest {
     Sha1,
     Sha256,

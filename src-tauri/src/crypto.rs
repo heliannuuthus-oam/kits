@@ -1,4 +1,5 @@
 pub mod aes;
+pub mod curve_25519;
 pub mod ecc;
-pub mod ed25519;
+pub mod kdf;
 pub mod rsa;

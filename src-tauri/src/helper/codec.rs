@@ -4,7 +4,7 @@ use base64ct::{
 };
 use serde_bytes::ByteBuf;
 
-use super::errors::Result;
+use super::{enums::KeyEncoding, errors::Result};
 
 #[tauri::command]
 pub fn base64_encode(
@@ -72,4 +72,81 @@ pub fn string_encode(input: ByteBuf) -> Result<String> {
 #[tauri::command]
 pub fn string_decode(input: &str) -> Result<ByteBuf> {
     Ok(ByteBuf::from(input.as_bytes()))
+}
+
+
+// pem to der or der to pem
+fn public_key_transfer<C>(
+  input: ByteBuf,
+  from: KeyEncoding,
+  to: KeyEncoding,
+) -> Result<Vec<u8>>
+where
+  C: spki::DecodePublicKey
+      + pkcs8::DecodePublicKey
+      + spki::EncodePublicKey
+      + pkcs8::EncodePublicKey,
+{
+  let public_key = match from {
+      KeyEncoding::Pem => {
+          let public_key_str = String::from_utf8(input.to_vec())
+              .context("informal ecc public key")?;
+          C::from_public_key_pem(&public_key_str)
+              .context("informal pem public key")?
+      }
+      KeyEncoding::Der => {
+          C::from_public_key_der(&input).context("informal der public key")?
+      }
+  };
+
+  Ok(match to {
+      KeyEncoding::Pem => public_key
+          .to_public_key_der()
+          .context("pem public key to der failed")?
+          .as_bytes()
+          .to_vec(),
+      KeyEncoding::Der => public_key
+          .to_public_key_pem(base64ct::LineEnding::LF)
+          .context("der public key to pem failed")?
+          .as_bytes()
+          .to_vec(),
+  })
+}
+
+fn pem_to_der<E>(input: E, is_public: bool) -> Result<ByteBuf>
+where
+  E: spki::EncodePublicKey + pkcs8::EncodePrivateKey,
+{
+  Ok(ByteBuf::from(if is_public {
+      input
+          .to_public_key_der()
+          .context("public key pem to der failed")?
+          .as_bytes()
+          .to_vec()
+  } else {
+      input
+          .to_pkcs8_der()
+          .context("private key pem to der failed")?
+          .as_bytes()
+          .to_vec()
+  }))
+}
+
+fn der_to_pem<E>(input: E, is_public: bool) -> Result<ByteBuf>
+where
+  E: spki::EncodePublicKey + pkcs8::EncodePrivateKey,
+{
+  Ok(ByteBuf::from(if is_public {
+      input
+          .to_public_key_pem(base64ct::LineEnding::LF)
+          .context("public key der to pem failed")?
+          .as_bytes()
+          .to_vec()
+  } else {
+      input
+          .to_pkcs8_pem(base64ct::LineEnding::LF)
+          .context("private key der to pem failed")?
+          .as_bytes()
+          .to_vec()
+  }))
 }
