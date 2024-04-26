@@ -141,36 +141,42 @@ const AesInput = ({
 	};
 
 	const encryptOrDecrypt = async () => {
-		form.validateFields({ validateOnly: true }).then((_) =>
-			charCodecor
-				.decode(
-					codecEl.current?.getFormat() || CharFormatter.Base64,
-					form.getFieldValue("input")
-				)
-				.then((input) => {
-					if (operation === "encrypt") {
-						invoke<Uint8Array>("encrypt_aes", {
-							...form.getFieldsValue(),
-							input,
-						})
-							.then(setOutput)
-							.catch((err: string) => {
-								notify(err);
-								setOutput(new Uint8Array());
-							});
-					} else {
-						invoke<Uint8Array>("decrypt_aes", {
-							...form.getFieldsValue(),
-							input,
-						})
-							.then(setOutput)
-							.catch((err: string) => {
-								notify(err);
-								setOutput(new Uint8Array());
-							});
-					}
-				})
-		);
+		try {
+			await form.validateFields({ validateOnly: true });
+			const input = await charCodecor.decode(
+				CharFormatter.UTF8,
+				form.getFieldValue("input")
+			);
+			const iv = await charCodecor.decode(
+				codecEl.current?.getFormat() || CharFormatter.Base64,
+				form.getFieldValue("iv")
+			);
+			const key = await charCodecor.decode(
+				codecEl.current?.getFormat() || CharFormatter.Base64,
+				form.getFieldValue("key")
+			);
+			console.log(iv);
+			console.log(key);
+
+			let output;
+			if (operation === "encrypt") {
+				output = await invoke<Uint8Array>("encrypt_aes", {
+					...form.getFieldsValue(),
+					input,
+					iv,
+					key,
+				});
+			} else {
+				output = await invoke<Uint8Array>("decrypt_aes", {
+					...form.getFieldsValue(),
+					input,
+				});
+			}
+			setOutput(output);
+		} catch (err: unknown) {
+			notify(err);
+			setOutput(new Uint8Array());
+		}
 	};
 
 	const onValuesChange = (value: object) => {
@@ -272,32 +278,24 @@ const AesInput = ({
 							ref={codecEl}
 							props={{
 								size: size,
-								defaultValue: CharFormatter.UTF8,
-								options:
-									operation === "encrypt"
-										? [
-												{
-													value: CharFormatter.UTF8,
-													label: <span>utf-8</span>,
-												},
-												{
-													value: CharFormatter.Base64,
-													label: <span>base64</span>,
-												},
-												{ value: CharFormatter.Hex, label: <span>hex</span> },
-											]
-										: [
-												{
-													value: CharFormatter.Base64,
-													label: <span>base64</span>,
-												},
-												{ value: CharFormatter.Hex, label: <span>hex</span> },
-											],
+								defaultValue: CharFormatter.Base64,
+								options: [
+									{
+										value: CharFormatter.Base64,
+										label: <span>base64</span>,
+									},
+									{ value: CharFormatter.Hex, label: <span>hex</span> },
+								],
 							}}
 							setInputs={(inputs: Record<string, string>) =>
 								form.setFieldsValue({ ...inputs })
 							}
-							getInputs={() => form.getFieldsValue([["key", "iv"]])}
+							getInputs={() => {
+								const maps = form.getFieldsValue(["key", "iv"]);
+								console.log("getinputs: ", maps);
+
+								return maps;
+							}}
 						/>
 					</Col>
 					<Col>
