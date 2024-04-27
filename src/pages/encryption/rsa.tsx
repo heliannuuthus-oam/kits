@@ -15,11 +15,11 @@ import {
 import TextArea, { TextAreaProps } from "antd/es/input/TextArea";
 import { useRef, useState } from "react";
 import {
-	CharCodec,
-	CharCodecRef,
-	CharFormatter,
-	charCodecor,
-} from "../../components/codec/CharCodecRadio";
+	TextCodec,
+	TextCodecRef,
+	TextEncoding,
+	textCodecor,
+} from "../../components/codec/TextCodecRadio";
 import { DownOutlined } from "@ant-design/icons";
 
 const DefaultTextArea = ({ style, ...props }: TextAreaProps) => {
@@ -138,10 +138,10 @@ const RsaEncryption = () => {
 	});
 	const [generating, setGenerating] = useState<boolean>(false);
 	const [deriving, setDeriving] = useState<boolean>(false);
-	const privateKeyCodecEl = useRef<CharCodecRef>(null);
-	const publicKeyCodecEl = useRef<CharCodecRef>(null);
-	const inputCodecEl = useRef<CharCodecRef>(null);
-	const outputCodecEl = useRef<CharCodecRef>(null);
+	const privateKeyCodecEl = useRef<TextCodecRef>(null);
+	const publicKeyCodecEl = useRef<TextCodecRef>(null);
+	const inputCodecEl = useRef<TextCodecRef>(null);
+	const outputCodecEl = useRef<TextCodecRef>(null);
 	const renderExtract = (padding: Padding) => {
 		switch (padding) {
 			case Padding.Pkcs1_v15:
@@ -178,8 +178,8 @@ const RsaEncryption = () => {
 		try {
 			const privateKey =
 				key == null
-					? await charCodecor.decode(
-							CharFormatter.Base64,
+					? await textCodecor.decode(
+							TextEncoding.Base64,
 							form.getFieldValue("privateKey")
 						)
 					: key;
@@ -189,8 +189,8 @@ const RsaEncryption = () => {
 				format: format.value,
 			});
 
-			const publicKey = await charCodecor.encode(
-				CharFormatter.Base64,
+			const publicKey = await textCodecor.encode(
+				TextEncoding.Base64,
 				publicKeyByte
 			);
 			form.setFieldsValue({ publicKey: publicKey });
@@ -210,7 +210,7 @@ const RsaEncryption = () => {
 
 			const [_, privateKey] = await Promise.all([
 				derivePublicKey(privateKeyBytes),
-				charCodecor.encode(CharFormatter.Base64, privateKeyBytes),
+				textCodecor.encode(TextEncoding.Base64, privateKeyBytes),
 			]);
 
 			form.setFieldsValue({
@@ -225,15 +225,15 @@ const RsaEncryption = () => {
 	const encryptOrDecrypt = async () => {
 		try {
 			const parameters = await form.validateFields({ validateOnly: true });
-			const input = await charCodecor.decode(
-				inputCodecEl.current?.getFormat() || CharFormatter.UTF8,
+			const input = await textCodecor.decode(
+				inputCodecEl.current?.getEncoding() || TextEncoding.UTF8,
 				parameters.input || ""
 			);
 			console.log(parameters);
 			let output;
 			if (operation === "encrypt") {
-				const key = await charCodecor.decode(
-					publicKeyCodecEl.current?.getFormat() || CharFormatter.Base64,
+				const key = await textCodecor.decode(
+					publicKeyCodecEl.current?.getEncoding() || TextEncoding.Base64,
 					parameters.publicKey
 				);
 
@@ -246,8 +246,8 @@ const RsaEncryption = () => {
 					},
 				});
 			} else {
-				const key = await charCodecor.decode(
-					privateKeyCodecEl.current?.getFormat() || CharFormatter.Base64,
+				const key = await textCodecor.decode(
+					privateKeyCodecEl.current?.getEncoding() || TextEncoding.Base64,
 					parameters.privateKey
 				);
 
@@ -262,8 +262,8 @@ const RsaEncryption = () => {
 			}
 
 			form.setFieldsValue({
-				output: await charCodecor.encode(
-					outputCodecEl.current?.getFormat() || CharFormatter.Base64,
+				output: await textCodecor.encode(
+					outputCodecEl.current?.getEncoding() || TextEncoding.Base64,
 					output
 				),
 			});
@@ -278,8 +278,8 @@ const RsaEncryption = () => {
 				await form.validateFields(["privateKey", "publicKey"]);
 
 			const [privateKey, publicKey] = await Promise.all([
-				charCodecor.decode(CharFormatter.Base64, privateKeyStr),
-				charCodecor.decode(CharFormatter.Base64, publicKeyStr),
+				textCodecor.decode(TextEncoding.Base64, privateKeyStr),
+				textCodecor.decode(TextEncoding.Base64, publicKeyStr),
 			]);
 
 			const [privateKeyBytes, publicKeyByte] = await invoke<Array<Uint8Array>>(
@@ -292,8 +292,8 @@ const RsaEncryption = () => {
 				}
 			);
 			[privateKeyStr, publicKeyStr] = await Promise.all([
-				charCodecor.encode(CharFormatter.Base64, privateKeyBytes),
-				charCodecor.encode(CharFormatter.Base64, publicKeyByte),
+				textCodecor.encode(TextEncoding.Base64, privateKeyBytes),
+				textCodecor.encode(TextEncoding.Base64, publicKeyByte),
 			]);
 			setFormat({ value: to });
 			form.setFieldsValue({
@@ -326,12 +326,12 @@ const RsaEncryption = () => {
 							<Typography.Title level={5} style={{ margin: 0 }}>
 								PrivateKey
 							</Typography.Title>
-							<CharCodec
-								codecor={charCodecor}
+							<TextCodec
+								codecor={textCodecor}
 								ref={privateKeyCodecEl}
 								props={{
 									size: size,
-									defaultValue: CharFormatter.Base64,
+									defaultValue: TextEncoding.Base64,
 								}}
 								setInputs={(input: string) =>
 									form.setFieldsValue({ privateKey: input })
@@ -386,12 +386,12 @@ const RsaEncryption = () => {
 							<Typography.Title level={5} style={{ margin: 0 }}>
 								PrivateKey
 							</Typography.Title>
-							<CharCodec
-								codecor={charCodecor}
+							<TextCodec
+								codecor={textCodecor}
 								ref={publicKeyCodecEl}
 								props={{
 									size: size,
-									defaultValue: CharFormatter.Base64,
+									defaultValue: TextEncoding.Base64,
 								}}
 								setInputs={(input: string) =>
 									form.setFieldsValue({ publicKey: input })
@@ -443,7 +443,7 @@ const RsaEncryption = () => {
 											<div
 												onClick={(_) => {
 													setOperation("encrypt");
-													inputCodecEl.current?.setFormat(CharFormatter.UTF8);
+													inputCodecEl.current?.setEncoding(TextEncoding.UTF8);
 												}}
 											>
 												encrypt
@@ -456,7 +456,7 @@ const RsaEncryption = () => {
 											<div
 												onClick={(_) => {
 													setOperation("decrypt");
-													inputCodecEl.current?.setFormat(CharFormatter.Base64);
+													inputCodecEl.current?.setEncoding(TextEncoding.Base64);
 												}}
 											>
 												decrypt
@@ -487,12 +487,12 @@ const RsaEncryption = () => {
 					<Typography.Title level={5} style={{ margin: 0 }}>
 						Input
 					</Typography.Title>
-					<CharCodec
-						codecor={charCodecor}
+					<TextCodec
+						codecor={textCodecor}
 						ref={inputCodecEl}
 						props={{
 							size: size,
-							defaultValue: CharFormatter.UTF8,
+							defaultValue: TextEncoding.UTF8,
 						}}
 						setInputs={(input: string) => form.setFieldsValue({ input })}
 						getInputs={() => form.getFieldValue("input")}
@@ -524,12 +524,12 @@ const RsaEncryption = () => {
 					<Typography.Title level={5} style={{ margin: 0 }}>
 						Output
 					</Typography.Title>
-					<CharCodec
-						codecor={charCodecor}
+					<TextCodec
+						codecor={textCodecor}
 						ref={outputCodecEl}
 						props={{
 							size: size,
-							defaultValue: CharFormatter.Base64,
+							defaultValue: TextEncoding.Base64,
 						}}
 						setInputs={(input: string) => form.setFieldsValue({ output: input })}
 						getInputs={() => form.getFieldValue("output")}
