@@ -333,8 +333,8 @@ const RsaEncryption = () => {
 									size: size,
 									defaultValue: TextEncoding.Base64,
 								}}
-								setInputs={(input: string) =>
-									form.setFieldsValue({ privateKey: input })
+								setInputs={(inputs: Record<string, string>) =>
+									form.setFieldsValue({ ...inputs })
 								}
 								getInputs={() => form.getFieldValue("privateKey")}
 							/>
@@ -393,8 +393,8 @@ const RsaEncryption = () => {
 									size: size,
 									defaultValue: TextEncoding.Base64,
 								}}
-								setInputs={(input: string) =>
-									form.setFieldsValue({ publicKey: input })
+								setInputs={(inputs: Record<string, string>) =>
+									form.setFieldsValue(inputs)
 								}
 								getInputs={() => form.getFieldValue("publicKey")}
 							/>
@@ -456,7 +456,9 @@ const RsaEncryption = () => {
 											<div
 												onClick={(_) => {
 													setOperation("decrypt");
-													inputCodecEl.current?.setEncoding(TextEncoding.Base64);
+													inputCodecEl.current?.setEncoding(
+														TextEncoding.Base64
+													);
 												}}
 											>
 												decrypt
@@ -494,7 +496,9 @@ const RsaEncryption = () => {
 							size: size,
 							defaultValue: TextEncoding.UTF8,
 						}}
-						setInputs={(input: string) => form.setFieldsValue({ input })}
+						setInputs={(input: Record<string, string>) =>
+							form.setFieldsValue(input)
+						}
 						getInputs={() => form.getFieldValue("input")}
 					/>
 				</Flex>
@@ -531,7 +535,9 @@ const RsaEncryption = () => {
 							size: size,
 							defaultValue: TextEncoding.Base64,
 						}}
-						setInputs={(input: string) => form.setFieldsValue({ output: input })}
+						setInputs={(inputs: Record<string, string>) =>
+							form.setFieldsValue(inputs)
+						}
 						getInputs={() => form.getFieldValue("output")}
 					/>
 				</Flex>
