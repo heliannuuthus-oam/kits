@@ -31,6 +31,17 @@ pub enum AsymmetricKeyFormat {
     Pkcs8Der,
 }
 
+
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+pub enum PkcsEncoding {
+    #[serde(rename = "pkcs8")]
+    Pkcs8,
+    #[serde(rename = "pkcs1")]
+    Pkcs1,
+    #[serde(rename = "sec1")]
+    Sec1,
+}
+
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub enum BaseKeyFormat {
     #[serde(rename = "pkcs8")]
@@ -45,6 +56,7 @@ pub enum RsaKeyFormat {
     #[serde(rename = "pkcs1")]
     Pkcs1,
 }
+
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub enum EccKeyFormat {
     BaseKeyFormat(BaseKeyFormat),

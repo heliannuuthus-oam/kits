@@ -105,19 +105,32 @@ export const textCodecor = new TextCodecor();
 
 // ================================ text encoding end ================================
 
-export enum PkiEncoding {
+export enum Pkcs1Encoding {
 	PKCS1_PEM = "pkcs1_pem",
 	PKCS1_DER = "pkcs1_der",
+}
+
+export enum Sec1Encoding {
+	SEC1_PEM = "sec1_pem",
+	SEC1_DER = "sec1_der",
+}
+
+export enum Pkcs8Encoding {
 	PKCS8_PEM = "pkcs8_pem",
 	PKCS8_DER = "pkcs8_der",
 }
 
+export const RsaPkiEncoding = { ...Pkcs1Encoding, ...Pkcs8Encoding };
+export type RsaPkiEncoding = typeof RsaPkiEncoding;
+
+type PkiEncoding = Pkcs8Encoding | Sec1Encoding | Pkcs1Encoding;
+
 export class PkiCodecor implements Codecor<PkiEncoding> {
 	encode(encoding: PkiEncoding, input: Uint8Array): Promise<string> {
 		switch (encoding) {
-			case PkiEncoding.PKCS8_PEM:
+			case Pkcs8Encoding.PKCS8_PEM:
 				return new Promise<string>((resovle, rejects) => {
-					invoke<string>("pem_encode", {
+					invoke<string>("pkcs8_pem_encode", {
 						input: Array.from(input),
 						unpadded: false,
 						urlsafety: false,
@@ -125,18 +138,18 @@ export class PkiCodecor implements Codecor<PkiEncoding> {
 						.then(resovle)
 						.catch(rejects);
 				});
-			case PkiEncoding.PKCS8_DER:
+			case Pkcs8Encoding.PKCS8_DER:
 				return new Promise<string>((resovle, rejects) => {
-					invoke<string>("der_decode", {
+					invoke<string>("pkcs8_der_encode", {
 						input: Array.from(input),
 						uppercase: false,
 					})
 						.then(resovle)
 						.catch(rejects);
 				});
-			case PkiEncoding.PKCS1_PEM:
+			case Pkcs1Encoding.PKCS1_PEM:
 				return new Promise<string>((resovle, rejects) => {
-					invoke<string>("pem_encode", {
+					invoke<string>("pkcs1_pem_encode", {
 						input: Array.from(input),
 						unpadded: false,
 						urlsafety: false,
@@ -144,9 +157,27 @@ export class PkiCodecor implements Codecor<PkiEncoding> {
 						.then(resovle)
 						.catch(rejects);
 				});
-			case PkiEncoding.PKCS1_DER:
+			case Pkcs1Encoding.PKCS1_DER:
 				return new Promise<string>((resovle, rejects) => {
-					invoke<string>("der_decode", {
+					invoke<string>("pkcs1_der_encode", {
+						input: Array.from(input),
+						uppercase: false,
+					})
+						.then(resovle)
+						.catch(rejects);
+				});
+			case Sec1Encoding.SEC1_PEM:
+				return new Promise<string>((resovle, rejects) => {
+					invoke<string>("sec1_pem_encode", {
+						input: Array.from(input),
+						uppercase: false,
+					})
+						.then(resovle)
+						.catch(rejects);
+				});
+			case Sec1Encoding.SEC1_DER:
+				return new Promise<string>((resovle, rejects) => {
+					invoke<string>("pkcs1_der_encode", {
 						input: Array.from(input),
 						uppercase: false,
 					})
@@ -157,9 +188,9 @@ export class PkiCodecor implements Codecor<PkiEncoding> {
 	}
 	decode(encoding: PkiEncoding, input: string): Promise<Uint8Array> {
 		switch (encoding) {
-			case PkiEncoding.PKCS8_PEM:
+			case Pkcs8Encoding.PKCS8_PEM:
 				return new Promise<Uint8Array>((resovle, rejects) => {
-					invoke<Uint8Array>("pem_encode", {
+					invoke<Uint8Array>("pkcs8_pem_decode", {
 						input: Array.from(input),
 						unpadded: false,
 						urlsafety: false,
@@ -167,18 +198,18 @@ export class PkiCodecor implements Codecor<PkiEncoding> {
 						.then(resovle)
 						.catch(rejects);
 				});
-			case PkiEncoding.PKCS8_DER:
+			case Pkcs8Encoding.PKCS8_DER:
 				return new Promise<Uint8Array>((resovle, rejects) => {
-					invoke<Uint8Array>("der_decode", {
+					invoke<Uint8Array>("pkcs8_der_decode", {
 						input: Array.from(input),
 						uppercase: false,
 					})
 						.then(resovle)
 						.catch(rejects);
 				});
-			case PkiEncoding.PKCS1_PEM:
+			case Pkcs1Encoding.PKCS1_PEM:
 				return new Promise<Uint8Array>((resovle, rejects) => {
-					invoke<Uint8Array>("pem_encode", {
+					invoke<Uint8Array>("pkcs1_pem_decode", {
 						input: Array.from(input),
 						unpadded: false,
 						urlsafety: false,
@@ -186,9 +217,27 @@ export class PkiCodecor implements Codecor<PkiEncoding> {
 						.then(resovle)
 						.catch(rejects);
 				});
-			case PkiEncoding.PKCS1_DER:
+			case Pkcs1Encoding.PKCS1_DER:
 				return new Promise<Uint8Array>((resovle, rejects) => {
-					invoke<Uint8Array>("der_decode", {
+					invoke<Uint8Array>("pkcs1_der_decode", {
+						input: Array.from(input),
+						uppercase: false,
+					})
+						.then(resovle)
+						.catch(rejects);
+				});
+			case Sec1Encoding.SEC1_PEM:
+				return new Promise<Uint8Array>((resovle, rejects) => {
+					invoke<Uint8Array>("sec1_pem_decode", {
+						input: Array.from(input),
+						uppercase: false,
+					})
+						.then(resovle)
+						.catch(rejects);
+				});
+			case Sec1Encoding.SEC1_DER:
+				return new Promise<Uint8Array>((resovle, rejects) => {
+					invoke<Uint8Array>("pkcs1_der_decode", {
 						input: Array.from(input),
 						uppercase: false,
 					})
@@ -201,5 +250,5 @@ export class PkiCodecor implements Codecor<PkiEncoding> {
 
 export const pkiCodecor = new PkiCodecor();
 
-export type PkiCodecSelectRef = CodecRef<PkiEncoding>;
+export type PkiCodecRef = CodecRef<PkiEncoding>;
 export type PkiSelectProps = CodecSelectProps<PkiEncoding>;

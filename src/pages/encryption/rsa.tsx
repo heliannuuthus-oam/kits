@@ -233,7 +233,6 @@ const RsaEncryption = () => {
 				inputCodecEl.current?.getEncoding() || TextEncoding.UTF8,
 				parameters.input || ""
 			);
-			console.log(parameters);
 			let output;
 			if (operation === "encrypt") {
 				const key = await textCodecor.decode(
