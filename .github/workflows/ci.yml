@@ -21,80 +21,16 @@ permissions:
   contents: write
   security-events: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: true
+
 jobs:
-  publish-tauri:
+  project:
+    uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust-tauri.yml@master
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: 'macos-latest' # for Arm based macs (M1 and above).
-            target: 'aarch64-apple-darwin'
-          - platform: 'macos-latest' # for Intel based macs.
-            target: 'x86_64-apple-darwin'
-          - platform: 'ubuntu-22.04' # for Tauri v1 you could replace this with ubuntu-20.04.
-            target: ''
-          - platform: 'windows-latest'
-            target: ''
-
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-      - uses: pnpm/action-setup@v3
-        with:
-          version: 8
-
-      - name: install stable toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-
-      - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04' # This must match the platform value defined above.
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-        # webkitgtk 4.0 is for Tauri v1 - webkitgtk 4.1 is for Tauri v2.
-        # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
-
-      - name: install frontend dependencies
-        run: pnpm install && pnpm eslint --fix . && pnpm prettier --write .
-
-      - id: environments
-        name: environments
-        run: |
-          opt="--no-deps --format-version 1"
-          if [ -d "src-tauri" ]; then
-            opt="$opt --manifest-path src-tauri/Cargo.toml"
-          fi
-          echo "
-          project=$(cargo metadata $opt | jq -r '.packages[0].name')
-          version=$(cargo metadata $opt | jq -r '.packages[0].version')
-          " >> "$GITHUB_OUTPUT"
-        shell: bash
-
-      - id: tauri-action
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: ${{ steps.environments.outputs.version }}
-          releaseName: ${{ steps.environments.outputs.project }}
-          releaseBody: ${{ github.event.head_commit.message }}
-          releaseDraft: true
-          prerelease: false
-          args: --target ${{ matrix.target }}
-
-      - name: upload tauri-artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: tauri-artifact
-          path: |
-              ${{ fromJSON(steps.tauri-action.outputs.artifactPaths)[0] }}
-              ${{ fromJSON(steps.tauri-action.outputs.artifactPaths)[1] }}
-              ${{ fromJSON(steps.tauri-action.outputs.artifactPaths)[2] }}
+      packages: write
+    with:
+      rust_workdir: "src-tauri"
+      node_workdir: "./"

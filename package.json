@@ -25,7 +25,7 @@
 		"tauri-plugin-log-api": "github:tauri-apps/tauri-plugin-log#v1"
 	},
 	"devDependencies": {
-		"@tauri-apps/cli": "^1.5.8",
+		"@tauri-apps/cli": "^1.5.11",
 		"@types/node": "^20.12.5",
 		"@types/react": "^18.2.15",
 		"@types/react-dom": "^18.2.7",
