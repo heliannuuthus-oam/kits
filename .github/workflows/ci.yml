@@ -3,19 +3,19 @@ name: publish
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
     paths-ignore:
-      - 'README.md'
-      - 'docs/**'
-      - '.vscode'
+      - "README.md"
+      - "docs/**"
+      - ".vscode"
   pull_request:
     branches:
       - master
     paths-ignore:
-      - 'docs/**'
-      - 'README.md'
-      - '.vscode'
-    
+      - "docs/**"
+      - "README.md"
+      - ".vscode"
+
 permissions:
   actions: write
   contents: write
@@ -29,14 +29,14 @@ jobs:
       fail-fast: false
       matrix:
         settings:
-          - platform: 'macos-latest' # for Arm based macs (M1 and above).
-            args: '--target aarch64-apple-darwin'
-          - platform: 'macos-latest' # for Intel based macs.
-            args: '--target x86_64-apple-darwin'
-          - platform: 'ubuntu-20.04'
-            args: ''
-          - platform: 'windows-latest'
-            args: ''
+          - platform: "macos-latest" # for Arm based macs (M1 and above).
+            args: "--target aarch64-apple-darwin"
+          - platform: "macos-latest" # for Intel based macs.
+            args: "--target x86_64-apple-darwin"
+          - platform: "ubuntu-latest"
+            args: ""
+          - platform: "windows-latest"
+            args: ""
 
     runs-on: ${{ matrix.settings.platform }}
     steps:
@@ -61,13 +61,13 @@ jobs:
           targets: ${{ matrix.settings.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Install dependencies (ubuntu only)
-        if: matrix.settings.platform == 'ubuntu-22.04'
+        if: matrix.settings.platform == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: Install dependencies
-        run: pnpm install && rustup target list && pnpm tauri info
+        run: pnpm install && rustup target list && pnpm tauri info && rustup target add x86_64-apple-darwin
 
       - name: Build and Release
         id: tauri-action
@@ -87,6 +87,6 @@ jobs:
         with:
           name: tauri-artifact
           path: |
-              ${{ fromJSON(steps.tauri-action.outputs.artifactPaths)[0] }}
-              ${{ fromJSON(steps.tauri-action.outputs.artifactPaths)[1] }}
-              ${{ fromJSON(steps.tauri-action.outputs.artifactPaths)[2] }}
+            ${{ fromJSON(steps.tauri-action.outputs.artifactPaths)[0] }}
+            ${{ fromJSON(steps.tauri-action.outputs.artifactPaths)[1] }}
+            ${{ fromJSON(steps.tauri-action.outputs.artifactPaths)[2] }}
