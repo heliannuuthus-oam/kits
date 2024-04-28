@@ -61,13 +61,13 @@ jobs:
           targets: ${{ matrix.settings.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Install dependencies (ubuntu only)
-        if: matrix.settings.platform == 'ubuntu-20.04'
+        if: matrix.settings.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: Install dependencies
-        run: pnpm install && rustup target list
+        run: pnpm install && rustup target list && pnpm tauri info
 
       - name: Build and Release
         id: tauri-action
