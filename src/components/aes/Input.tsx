@@ -14,12 +14,8 @@ import {
 	notification,
 } from "antd";
 import { useRef, useState } from "react";
-import {
-	CharCodec,
-	CharCodecRef,
-	CharFormatter,
-	charCodecor,
-} from "../codec/CharCodecRadio";
+import { TextCodecRef, TextEncoding, textCodecor } from "../codec/codec";
+import { TextRadioCodec } from "../codec/TextCodecRadio";
 
 const { TextArea } = Input;
 
@@ -45,7 +41,33 @@ type FormInput = {
 	mode: Mode;
 	aad?: string;
 	input: string;
-	format: CharFormatter;
+	format: TextEncoding;
+};
+
+const ivComputer = (mode: Mode, encoding: TextEncoding): number => {
+	let length = mode === Mode.CBC ? 16 : 12;
+	switch (encoding) {
+		case TextEncoding.Base64:
+			length = Math.floor((length + 2) / 3) * 4;
+			break;
+		case TextEncoding.Hex:
+			length *= 2;
+			break;
+	}
+	return Math.floor(length);
+};
+
+const keyComputer = (keySize: number, encoding: TextEncoding): number => {
+	let length = keySize / 8;
+	switch (encoding) {
+		case TextEncoding.Base64:
+			length = Math.floor((length + 2) / 3) * 4;
+			break;
+		case TextEncoding.Hex:
+			length *= 2;
+			break;
+	}
+	return length;
 };
 
 const AesInput = ({
@@ -62,7 +84,7 @@ const AesInput = ({
 		iv: "",
 		key: "",
 	};
-	const codecEl = useRef<CharCodecRef>(null);
+	const codecEl = useRef<TextCodecRef>(null);
 	const mode = Form.useWatch("mode", form);
 	const [notifyApi, notifyContextHodler] = notification.useNotification({
 		stack: { threshold: 1 },
@@ -79,30 +101,44 @@ const AesInput = ({
 
 	const keyValidator: FormRule[] = [
 		{ required: true, message: "key is required" },
-		{
-			len: keySize === 128 ? 24 : 48,
-			message: `iv must be a base64 encoded character of ${
-				keySize === 128 ? 24 : 48
-			} length`,
-		},
+		({ getFieldValue }) => ({
+			validator(_, value) {
+				const encoding = codecEl.current?.getEncoding() || TextEncoding.Base64;
+				const length = keyComputer(keySize, encoding);
+				if (!value || getFieldValue("key").length === length) {
+					return Promise.resolve();
+				}
+				return Promise.reject(
+					new Error(
+						`key must be a ${encoding} encodings character of ${length} length`
+					)
+				);
+			},
+		}),
 	];
 
 	const ivValidator: FormRule[] = [
 		{ required: true, message: "iv is required" },
-		{
-			len: mode && mode === Mode.GCM ? 16 : 24,
-
-			message: `iv must be a base64 encoded character of  ${
-				mode && mode === Mode.GCM ? 16 : 24
-			} length`,
-		},
+		({ getFieldValue }) => ({
+			validator(_, value) {
+				const encoding = codecEl.current?.getEncoding() || TextEncoding.Base64;
+				const length = ivComputer(mode, encoding);
+				if (!value || getFieldValue("iv").length === length) {
+					return Promise.resolve();
+				}
+				return Promise.reject(
+					new Error(
+						`iv must be a ${encoding} encodings character of ${length} length`
+					)
+				);
+			},
+		}),
 	];
 
 	const inputValidator: FormRule[] = [
 		{ required: true, message: "input is required" },
 		{
 			min: 1,
-
 			message: "message must not be empty",
 		},
 	];
@@ -112,8 +148,8 @@ const AesInput = ({
 			const dataBytes = await invoke<Uint8Array>("generate_aes", {
 				keySize: keySize,
 			});
-			const data = await charCodecor.encode(
-				codecEl.current?.getFormat() || CharFormatter.Base64,
+			const data = await textCodecor.encode(
+				codecEl.current?.getEncoding() || TextEncoding.Base64,
 				dataBytes
 			);
 
@@ -129,8 +165,8 @@ const AesInput = ({
 				size: mode === Mode.CBC ? 16 : 12,
 			});
 
-			const data = await charCodecor.encode(
-				codecEl.current?.getFormat() || CharFormatter.Base64,
+			const data = await textCodecor.encode(
+				codecEl.current?.getEncoding() || TextEncoding.Base64,
 				dataBytes
 			);
 
@@ -141,36 +177,38 @@ const AesInput = ({
 	};
 
 	const encryptOrDecrypt = async () => {
-		form.validateFields({ validateOnly: true }).then((_) =>
-			charCodecor
-				.decode(
-					codecEl.current?.getFormat() || CharFormatter.Base64,
-					form.getFieldValue("input")
-				)
-				.then((input) => {
-					if (operation === "encrypt") {
-						invoke<Uint8Array>("encrypt_aes", {
-							...form.getFieldsValue(),
-							input,
-						})
-							.then(setOutput)
-							.catch((err: string) => {
-								notify(err);
-								setOutput(new Uint8Array());
-							});
-					} else {
-						invoke<Uint8Array>("decrypt_aes", {
-							...form.getFieldsValue(),
-							input,
-						})
-							.then(setOutput)
-							.catch((err: string) => {
-								notify(err);
-								setOutput(new Uint8Array());
-							});
-					}
-				})
-		);
+		try {
+			const eencoding = codecEl.current?.getEncoding() || TextEncoding.Base64;
+			await form.validateFields({ validateOnly: true });
+			const input = await textCodecor.decode(
+				eencoding,
+				form.getFieldValue("input")
+			);
+			const iv = await textCodecor.decode(eencoding, form.getFieldValue("iv"));
+			const key = await textCodecor.decode(
+				eencoding,
+				form.getFieldValue("key")
+			);
+			let output;
+			if (operation === "encrypt") {
+				output = await invoke<Uint8Array>("encrypt_aes", {
+					...form.getFieldsValue(),
+					input,
+					iv,
+					key,
+				});
+			} else {
+				output = await invoke<Uint8Array>("decrypt_aes", {
+					...form.getFieldsValue(),
+					input,
+					iv,
+					key,
+				});
+			}
+			setOutput(output);
+		} catch (err: unknown) {
+			setOutput(new Uint8Array());
+		}
 	};
 
 	const onValuesChange = (value: object) => {
@@ -185,7 +223,13 @@ const AesInput = ({
 				return (
 					<Form.Item key="cbc_iv">
 						<Space.Compact size={size} style={{ width: "100%" }}>
-							<Form.Item hasFeedback noStyle name="iv" rules={ivValidator}>
+							<Form.Item
+								hasFeedback
+								noStyle
+								name="iv"
+								dependencies={["mode"]}
+								rules={ivValidator}
+							>
 								<Input placeholder="input iv" />
 							</Form.Item>
 							<Button style={{ margin: 0 }} onClick={generateIv}>
@@ -200,7 +244,13 @@ const AesInput = ({
 					<>
 						<Form.Item key="gcm_iv" hasFeedback>
 							<Space.Compact size={size} style={{ width: "100%" }}>
-								<Form.Item noStyle name="iv" rules={ivValidator} hasFeedback>
+								<Form.Item
+									noStyle
+									name="iv"
+									dependencies={["mode"]}
+									rules={ivValidator}
+									hasFeedback
+								>
 									<Input placeholder="input iv" />
 								</Form.Item>
 								<Button style={{ margin: 0 }} onClick={generateIv}>
@@ -215,6 +265,27 @@ const AesInput = ({
 				);
 			default:
 				return <></>;
+		}
+	};
+
+	const changeOperator = async () => {
+		try {
+			const fromEncoding =
+				codecEl.current?.getEncoding() || TextEncoding.Base64;
+			const toEncoding = TextEncoding.Base64;
+			const values = form.getFieldsValue(["iv", "key"]);
+			const iv = await textCodecor.encode(
+				toEncoding,
+				await textCodecor.decode(fromEncoding, values["iv"])
+			);
+			const key = await textCodecor.encode(
+				toEncoding,
+				await textCodecor.decode(fromEncoding, values["key"])
+			);
+			form.setFieldsValue({ input: "", iv, key });
+			codecEl.current?.setEncoding(toEncoding);
+		} catch (error) {
+			console.log(error);
 		}
 	};
 
@@ -267,37 +338,28 @@ const AesInput = ({
 			<Form.Item key="operation">
 				<Row justify="space-between" align="middle">
 					<Col>
-						<CharCodec
-							codecor={charCodecor}
+						<TextRadioCodec
+							codecor={textCodecor}
 							ref={codecEl}
 							props={{
 								size: size,
-								defaultValue: CharFormatter.UTF8,
-								options:
-									operation === "encrypt"
-										? [
-												{
-													value: CharFormatter.UTF8,
-													label: <span>utf-8</span>,
-												},
-												{
-													value: CharFormatter.Base64,
-													label: <span>base64</span>,
-												},
-												{ value: CharFormatter.Hex, label: <span>hex</span> },
-											]
-										: [
-												{
-													value: CharFormatter.Base64,
-													label: <span>base64</span>,
-												},
-												{ value: CharFormatter.Hex, label: <span>hex</span> },
-											],
+								defaultValue: TextEncoding.UTF8,
+								options: [
+									{
+										value: TextEncoding.UTF8,
+										label: <span>utf-8</span>,
+									},
+									{
+										value: TextEncoding.Base64,
+										label: <span>base64</span>,
+									},
+									{ value: TextEncoding.Hex, label: <span>hex</span> },
+								],
 							}}
 							setInputs={(inputs: Record<string, string>) =>
 								form.setFieldsValue({ ...inputs })
 							}
-							getInputs={() => form.getFieldsValue([["key", "iv"]])}
+							getInputs={() => form.getFieldsValue(["key", "iv"])}
 						/>
 					</Col>
 					<Col>
@@ -309,9 +371,9 @@ const AesInput = ({
 											{
 												label: (
 													<div
-														onClick={(_) => {
+														onClick={async (_) => {
 															setOperation("encrypt");
-															codecEl.current?.setFormat(CharFormatter.UTF8);
+															await changeOperator();
 														}}
 													>
 														encrypt
@@ -322,9 +384,9 @@ const AesInput = ({
 											{
 												label: (
 													<div
-														onClick={(_) => {
+														onClick={async (_) => {
 															setOperation("decrypt");
-															codecEl.current?.setFormat(CharFormatter.Base64);
+															await changeOperator();
 														}}
 													>
 														decrypt
@@ -350,7 +412,13 @@ const AesInput = ({
 			</Form.Item>
 			<Form.Item key="key">
 				<Space.Compact size={size} style={{ width: "100%" }}>
-					<Form.Item noStyle name="key" hasFeedback rules={keyValidator}>
+					<Form.Item
+						noStyle
+						name="key"
+						dependencies={["mode"]}
+						hasFeedback
+						rules={keyValidator}
+					>
 						<Input placeholder="input encryption key" />
 					</Form.Item>
 					<Select

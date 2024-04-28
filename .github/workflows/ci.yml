@@ -1,21 +1,19 @@
-name: publish
-
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
     paths-ignore:
-      - 'README.md'
-      - 'docs/**'
-      - '.vscode'
+      - "README.md"
+      - "docs/**"
+      - ".vscode"
   pull_request:
     branches:
       - master
     paths-ignore:
-      - 'docs/**'
-      - 'README.md'
-      - '.vscode'
-    
+      - "docs/**"
+      - "README.md"
+      - ".vscode"
+
 permissions:
   actions: write
   contents: write
@@ -27,10 +25,11 @@ concurrency:
 
 jobs:
   project:
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust-tauri.yml@master
+    uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust-tauri.yml@v0.5.0
     permissions:
       contents: write
       packages: write
     with:
       rust_workdir: "src-tauri"
       node_workdir: "./"
+      toolchain: "nightly"

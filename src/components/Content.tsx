@@ -1,4 +1,4 @@
-import { App, AppProps, ConfigProvider } from "antd";
+import { App, AppProps, ConfigProvider, Skeleton } from "antd";
 import { Suspense } from "react";
 import { useRoutes } from "react-router-dom";
 import routes from "~react-pages";
@@ -25,7 +25,9 @@ export const Content = ({ ...props }: AppProps) => {
 			}}
 		>
 			<App {...props}>
-				<Suspense fallback={<p>Loading...</p>}>{useRoutes(routes)}</Suspense>
+				<Suspense fallback={<Skeleton active paragraph={{ rows: 24 }} />}>
+					{useRoutes(routes)}
+				</Suspense>
 			</App>
 		</ConfigProvider>
 	);

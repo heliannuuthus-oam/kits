@@ -133,14 +133,14 @@ pub async fn decrypt_rsa(data: RsaEncryptionDto) -> Result<ByteBuf> {
 }
 
 #[tauri::command]
-pub async fn transfer_key(
+pub async fn transfer_rsa_key(
     private_key: Option<ByteBuf>,
     public_key: Option<ByteBuf>,
     from: AsymmetricKeyFormat,
     to: AsymmetricKeyFormat,
 ) -> Result<KeyTuple> {
     info!(
-        "tranfer rsa key,  {:?} to {:?}. private->{}, public->{}",
+        "transfer rsa key,  {:?} to {:?}. private->{}, public->{}",
         from,
         to,
         private_key.is_some(),

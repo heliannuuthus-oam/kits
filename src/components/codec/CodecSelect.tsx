@@ -1,9 +1,10 @@
-import { Radio, RadioChangeEvent, notification } from "antd";
+import { Select, notification } from "antd";
 import { ForwardedRef, forwardRef, useImperativeHandle, useState } from "react";
-import { CodecRadioProps, CodecRef } from "./codec";
+import { CodecRef } from "./codec";
+import { CodecSelectProps } from "./codec";
 
-function CodecRadioInner<T>(
-	props: CodecRadioProps<T>,
+function CodecSelectInner<T>(
+	props: CodecSelectProps<T>,
 	ref: ForwardedRef<CodecRef<T>>
 ) {
 	const [encoding, setEncoding] = useState<T>(props.props.defaultValue);
@@ -21,19 +22,19 @@ function CodecRadioInner<T>(
 		});
 	};
 
-	const changeEncoding = async (event: RadioChangeEvent) => {
+	const selectEncoding = async (value: T) => {
 		const inputs = props.getInputs();
 		try {
 			for (const [key, input] of Object.entries(inputs)) {
 				const decoded = await props.codecor.decode(encoding, input);
 
-				const encoded = await props.codecor.encode(event.target.value, decoded);
+				const encoded = await props.codecor.encode(value, decoded);
 				inputs[key] = encoded;
 			}
 			props.setInputs(inputs);
-			setEncoding(event.target.value);
+			setEncoding(value);
 		} catch (err: unknown) {
-			openNotification(encoding, event.target.value, err as string);
+			openNotification(encoding, value, err as string);
 		}
 	};
 
@@ -49,16 +50,11 @@ function CodecRadioInner<T>(
 	return (
 		<>
 			{contextHolder}
-			<Radio.Group
-				onChange={changeEncoding}
-				value={encoding}
-				{...props.props}
-				optionType="button"
-			/>
+			<Select onSelect={selectEncoding} value={encoding} {...props.props} />
 		</>
 	);
 }
 
-export const CodecRadio = forwardRef(CodecRadioInner) as <T>(
-	props: CodecRadioProps<T> & { ref?: React.ForwardedRef<CodecRef<T>> }
-) => ReturnType<typeof CodecRadioInner>;
+export const CodecSelect = forwardRef(CodecSelectInner) as <T>(
+	props: CodecSelectProps<T> & { ref?: React.ForwardedRef<CodecRef<T>> }
+) => ReturnType<typeof CodecSelectInner>;
