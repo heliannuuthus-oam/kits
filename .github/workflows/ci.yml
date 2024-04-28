@@ -25,10 +25,11 @@ concurrency:
 
 jobs:
   project:
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust-tauri.yml@master
+    uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust-tauri.yml@v0.5.0
     permissions:
       contents: write
       packages: write
     with:
       rust_workdir: "src-tauri"
       node_workdir: "./"
+      toolchain: "nightly"
