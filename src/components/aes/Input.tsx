@@ -14,12 +14,8 @@ import {
 	notification,
 } from "antd";
 import { useRef, useState } from "react";
-import {
-	TextRadioCodec,
-	TextCodecRef,
-	TextEncoding,
-	textCodecor,
-} from "../codec/TextCodecRadio";
+import { TextCodecRef, TextEncoding, textCodecor } from "../codec/codec";
+import { TextRadioCodec } from "../codec/TextCodecRadio";
 
 const { TextArea } = Input;
 

@@ -2,12 +2,8 @@ import { writeText } from "@tauri-apps/api/clipboard";
 import { Button, Col, Input, Row, Space, Typography, message } from "antd";
 import { valueType } from "antd/es/statistic/utils";
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
-import {
-	TextRadioCodec,
-	TextCodecRef,
-	TextEncoding,
-	textCodecor,
-} from "../codec/TextCodecRadio";
+import { TextCodecRef, TextEncoding, textCodecor } from "../codec/codec";
+import { TextRadioCodec } from "../codec/TextCodecRadio";
 const { Title } = Typography;
 const { TextArea } = Input;
 
