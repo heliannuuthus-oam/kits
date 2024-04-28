@@ -15,7 +15,7 @@ import {
 } from "antd";
 import { useRef, useState } from "react";
 import {
-	TextCodec,
+	TextRadioCodec,
 	TextCodecRef,
 	TextEncoding,
 	textCodecor,
@@ -342,7 +342,7 @@ const AesInput = ({
 			<Form.Item key="operation">
 				<Row justify="space-between" align="middle">
 					<Col>
-						<TextCodec
+						<TextRadioCodec
 							codecor={textCodecor}
 							ref={codecEl}
 							props={{

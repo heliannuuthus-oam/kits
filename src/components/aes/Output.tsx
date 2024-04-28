@@ -3,7 +3,7 @@ import { Button, Col, Input, Row, Space, Typography, message } from "antd";
 import { valueType } from "antd/es/statistic/utils";
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import {
-	TextCodec,
+	TextRadioCodec,
 	TextCodecRef,
 	TextEncoding,
 	textCodecor,
@@ -52,7 +52,7 @@ const AesOutput = forwardRef<AesOutputRef, AesOutputProps>((_props, ref) => {
 					</Title>
 				</Col>
 				<Col>
-					<TextCodec
+					<TextRadioCodec
 						ref={codecEl}
 						codecor={textCodecor}
 						props={{ size: size, defaultValue: TextEncoding.Base64 }}

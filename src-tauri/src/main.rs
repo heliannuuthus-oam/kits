@@ -44,7 +44,7 @@ fn main() -> Result<()> {
             crypto::rsa::decrypt_rsa,
             crypto::ecc::ecies,
             // format
-            crypto::rsa::transfer_key,
+            crypto::rsa::transfer_rsa_key,
             helper::codec::base64_encode,
             helper::codec::base64_decode,
             helper::codec::hex_encode,

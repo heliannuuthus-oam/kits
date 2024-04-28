@@ -1,12 +1,17 @@
 import { forwardRef } from "react";
-import { TextCodecRadioProps, TextCodecRef } from "./codec";
-import { TextEncoding } from "./codec";
-import { CodecRadio } from "./CodecRadio";
+import { TextCodecRef, TextCodecSelectProps } from "./codec";
+import { CodecSelect } from "./CodecSelect";
 
-export const TextRadioCodec = forwardRef<TextCodecRef, TextCodecRadioProps>(
+export enum TextEncoding {
+	Base64 = "base64",
+	Hex = "hex",
+	UTF8 = "utf8",
+}
+
+export const TextSelectCodec = forwardRef<TextCodecRef, TextCodecSelectProps>(
 	({ codecor, getInputs: getInput, setInputs: setInput, props }, ref) => {
 		return (
-			<CodecRadio
+			<CodecSelect
 				ref={ref}
 				codecor={codecor}
 				getInputs={getInput}
