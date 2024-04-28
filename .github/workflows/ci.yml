@@ -45,7 +45,7 @@ jobs:
       - name: setup node
         uses: actions/setup-node@v4
         with:
-          node-version: tls/*
+          node-version: lts/*
       - uses: pnpm/action-setup@v3
         with:
           version: 8
