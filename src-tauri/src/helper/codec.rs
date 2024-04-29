@@ -2,12 +2,19 @@ use anyhow::Context;
 use base64ct::{
     Base64, Base64Unpadded, Base64Url, Base64UrlUnpadded, Encoding,
 };
-use pkcs1::EncodeRsaPublicKey;
 use serde_bytes::ByteBuf;
+
+use super::{
+    enums::{EccCurveName, KeyEncoding},
+    errors::{Error, Result},
+};
 use crate::helper::enums::PkcsEncoding;
 
-use super::{enums::KeyEncoding, errors::Result};
-
+#[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
+pub struct PkcsGoods {
+    pkcs: PkcsEncoding,
+    encoding: KeyEncoding,
+}
 #[tauri::command]
 pub fn base64_encode(
     input: ByteBuf,
@@ -42,10 +49,10 @@ pub fn base64_decode(
                 (false, true) => Base64Url::decode_vec(input),
                 (false, false) => Base64::decode_vec(input),
             }
-                .context(format!(
-                    "base64 decode failed, unppaded: {}, urlsafety: {}",
-                    unpadded, urlsafety
-                ))?,
+            .context(format!(
+                "base64 decode failed, unppaded: {}, urlsafety: {}",
+                unpadded, urlsafety
+            ))?,
         ))
     }
 }
@@ -92,449 +99,435 @@ pub fn string_decode(input: &str) -> Result<ByteBuf> {
     Ok(ByteBuf::from(input.as_bytes()))
 }
 
-// pem to der or der to pem
-fn public_key_transfer<C>(
+#[tauri::command]
+pub fn pkcs8_sec1_transfer(
+    curve_name: EccCurveName,
     input: ByteBuf,
-    from: KeyEncoding,
-    to: KeyEncoding,
+    from: PkcsGoods,
+    to: PkcsGoods,
+    is_public: bool,
+) -> Result<ByteBuf> {
+    Ok(ByteBuf::from(match curve_name {
+        EccCurveName::NistP256 => pkcs8_sec1_transfer_inner::<p256::NistP256>(
+            input.as_ref(),
+            is_public,
+            from,
+            to,
+        )?,
+        EccCurveName::NistP384 => pkcs8_sec1_transfer_inner::<p384::NistP384>(
+            input.as_ref(),
+            is_public,
+            from,
+            to,
+        )?,
+        EccCurveName::NistP521 => pkcs8_sec1_transfer_inner::<p521::NistP521>(
+            input.as_ref(),
+            is_public,
+            from,
+            to,
+        )?,
+        EccCurveName::Secp256k1 => {
+            pkcs8_sec1_transfer_inner::<k256::Secp256k1>(
+                input.as_ref(),
+                is_public,
+                from,
+                to,
+            )?
+        }
+    }))
+}
+
+fn pkcs8_sec1_transfer_inner<C>(
+    input: &[u8],
+    is_public: bool,
+    from: PkcsGoods,
+    to: PkcsGoods,
 ) -> Result<Vec<u8>>
-    where
-        C: spki::DecodePublicKey
-        + pkcs8::DecodePublicKey
-        + spki::EncodePublicKey
-        + pkcs8::EncodePublicKey,
+where
+    C: pkcs8::AssociatedOid + elliptic_curve::CurveArithmetic,
+    elliptic_curve::AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
+        + elliptic_curve::sec1::ToEncodedPoint<C>,
+    elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
 {
-    let public_key = match from {
-        KeyEncoding::Pem => {
-            let public_key_str = String::from_utf8(input.to_vec())
-                .context("informal ecc public key")?;
-            C::from_public_key_pem(&public_key_str)
-                .context("informal pem public key")?
-        }
-        KeyEncoding::Der => {
-            C::from_public_key_der(&input).context("informal der public key")?
-        }
-    };
-
-    Ok(match to {
-        KeyEncoding::Pem => public_key
-            .to_public_key_der()
-            .context("pem public key to der failed")?
-            .as_bytes()
-            .to_vec(),
-        KeyEncoding::Der => public_key
-            .to_public_key_pem(base64ct::LineEnding::LF)
-            .context("der public key to pem failed")?
-            .as_bytes()
-            .to_vec(),
-    })
-}
-
-
-fn sec1_pem_to_der<E>(input: E, is_public: bool) -> Result<ByteBuf>
-    where
-        E: spki::EncodePublicKey + pkcs8::EncodePrivateKey,
-{
-    Ok(ByteBuf::from(if is_public {
-        input
-            .to_public_key_der()
-            .context("public key pem to der failed")?
-            .as_bytes()
-            .to_vec()
-    } else {
-        input
-            .to_pkcs8_der()
-            .context("private key pem to der failed")?
-            .as_bytes()
-            .to_vec()
-    }))
-}
-
-
-fn bytes_to_pkcs8<E>(input: &[u8], is_public: bool, encoding: KeyEncoding) -> Result<E>
-    where E: spki::DecodePublicKey + pkcs8::DecodePrivateKey {
-    match encoding {
-        KeyEncoding::Pem => {
-            let key_string = String::from_utf8(input.to_vec()).context("invalid utf-8 key")?;
+    match from.pkcs {
+        PkcsEncoding::Pkcs8 => {
             if is_public {
-                E::from_public_key_pem(&key_string)
-                    .context("invalid sec1 pem public key")?
+                let key = public_bytes_to_pkcs8::<elliptic_curve::PublicKey<C>>(
+                    input,
+                    from.encoding,
+                )?;
+                match to.pkcs {
+                    PkcsEncoding::Pkcs8 => {
+                        public_pkcs8_to_bytes(key, to.encoding)
+                    }
+                    PkcsEncoding::Sec1 => {
+                        public_sec1_to_bytes(key, to.encoding)
+                    }
+                    _ => Err(Error::Unsupported(
+                        "only supported ecc key".to_string(),
+                    )),
+                }
             } else {
-                E::from_pkcs8_pem(&key_string)
-                    .context("invalid sec1 pem private key")?
+                let key = private_bytes_to_pkcs8::<elliptic_curve::SecretKey<C>>(
+                    input,
+                    from.encoding,
+                )?;
+                match to.pkcs {
+                    PkcsEncoding::Pkcs8 => {
+                        private_pkcs8_to_bytes(key, to.encoding)
+                    }
+                    PkcsEncoding::Sec1 => {
+                        private_sec1_to_bytes(key, to.encoding)
+                    }
+                    _ => Err(Error::Unsupported(
+                        "only supported ecc key".to_string(),
+                    )),
+                }
             }
         }
-        KeyEncoding::Der => {
+        PkcsEncoding::Sec1 => {
             if is_public {
-                E::from_public_key_der(input)
-                    .context("invalid sec1 der public key")?
+                let key = public_bytes_to_pkcs8::<elliptic_curve::PublicKey<C>>(
+                    input,
+                    from.encoding,
+                )?;
+                match to.pkcs {
+                    PkcsEncoding::Pkcs8 => {
+                        public_pkcs8_to_bytes(key, to.encoding)
+                    }
+                    PkcsEncoding::Sec1 => {
+                        public_sec1_to_bytes(key, to.encoding)
+                    }
+                    _ => Err(Error::Unsupported(
+                        "only supported ecc key".to_string(),
+                    )),
+                }
             } else {
-                E::from_pkcs8_der(input)
-                    .context("invalid sec1 der private key")?
+                let key = private_bytes_to_pkcs8::<elliptic_curve::SecretKey<C>>(
+                    input,
+                    from.encoding,
+                )?;
+                match to.pkcs {
+                    PkcsEncoding::Pkcs8 => {
+                        private_pkcs8_to_bytes(key, to.encoding)
+                    }
+                    PkcsEncoding::Sec1 => {
+                        private_sec1_to_bytes(key, to.encoding)
+                    }
+                    _ => Err(Error::Unsupported(
+                        "only supported ecc key".to_string(),
+                    )),
+                }
             }
         }
+        _ => Err(Error::Unsupported("only supported ecc key".to_string())),
     }
 }
 
-fn pkcs8_to_bytes<E>(input: E, is_public: bool, encoding: KeyEncoding) -> Result<Vec<u8>>
-    where E: spki::EncodePublicKey + pkcs8::EncodePrivateKey {
-    Ok(match encoding {
-        KeyEncoding::Pem => {
-            if is_public {
-                input.to_public_key_pem(base64ct::LineEnding::LF)
-                    .context("invalid pkcs8 pem public key")?
-                    .into_bytes()
-            } else {
-                input.to_pkcs1_pem(base64ct::LineEnding::LF)
-                    .context("invalid pkcs8 pem private key")?
-                    .into_bytes()
-            }
-        }
-        KeyEncoding::Der => {
-            if is_public {
-                input.to_public_key_der()
-                    .context("invalid pkcs8 der public key")?
-                    .to_bytes().to_vec()
-            } else {
-                input.to_pkcs8_der()
-                    .context("invalid pkcs8 der private key")?
-                    .to_bytes().to_vec()
-            }
-        }
-    })
+#[tauri::command]
+pub fn pkcs8_pkcs1_transfer(
+    input: ByteBuf,
+    from: PkcsGoods,
+    to: PkcsGoods,
+    is_public: bool,
+) -> Result<ByteBuf> {
+    Ok(ByteBuf::from(pkcs8_pkcs1_transfer_inner(
+        &input, from, to, is_public,
+    )?))
 }
 
-
-fn bytes_to_pkcs1<E>(input: &[u8], encoding: KeyEncoding) -> Result<E>
-    where E: pkcs1::DecodeRsaPrivateKey + pkcs1::DecodeRsaPublicKey {
-    match encoding {
-        KeyEncoding::Pem => {
-            let key_string = String::from_utf8(input.to_vec()).context("invalid utf-8 key")?;
-            E::from_pkcs1_pem(&key_string)
-                .context("invalid pkcs1 pem key")?
+fn pkcs8_pkcs1_transfer_inner(
+    input: &[u8],
+    from: PkcsGoods,
+    to: PkcsGoods,
+    is_public: bool,
+) -> Result<Vec<u8>> {
+    match from.pkcs {
+        PkcsEncoding::Pkcs8 => {
+            if is_public {
+                let key = public_bytes_to_pkcs8::<rsa::RsaPublicKey>(
+                    input,
+                    from.encoding,
+                )?;
+                match to.pkcs {
+                    PkcsEncoding::Pkcs8 => {
+                        public_pkcs8_to_bytes(key, to.encoding)
+                    }
+                    PkcsEncoding::Pkcs1 => {
+                        public_pkcs1_to_bytes(key, to.encoding)
+                    }
+                    _ => Err(Error::Unsupported(
+                        "only supported rsa key".to_string(),
+                    )),
+                }
+            } else {
+                let key = private_bytes_to_pkcs8::<rsa::RsaPrivateKey>(
+                    input,
+                    from.encoding,
+                )?;
+                match to.pkcs {
+                    PkcsEncoding::Pkcs8 => {
+                        private_pkcs8_to_bytes(key, to.encoding)
+                    }
+                    PkcsEncoding::Pkcs1 => {
+                        private_pkcs1_to_bytes(key, to.encoding)
+                    }
+                    _ => Err(Error::Unsupported(
+                        "only supported rsa key".to_string(),
+                    )),
+                }
+            }
         }
-        KeyEncoding::Der => {
-            E::from_pkcs1_der(input)
-                .context("invalid pkcs1 der key")?
+        PkcsEncoding::Pkcs1 => {
+            if is_public {
+                let key = public_bytes_to_pkcs8::<rsa::RsaPublicKey>(
+                    input,
+                    from.encoding,
+                )?;
+                match to.pkcs {
+                    PkcsEncoding::Pkcs8 => {
+                        public_pkcs8_to_bytes(key, to.encoding)
+                    }
+                    PkcsEncoding::Sec1 => {
+                        public_sec1_to_bytes(key, to.encoding)
+                    }
+                    _ => Err(Error::Unsupported(
+                        "only supported ecc key".to_string(),
+                    )),
+                }
+            } else {
+                let key = private_bytes_to_pkcs8::<rsa::RsaPrivateKey>(
+                    input,
+                    from.encoding,
+                )?;
+                match to.pkcs {
+                    PkcsEncoding::Pkcs8 => {
+                        private_pkcs8_to_bytes(key, to.encoding)
+                    }
+                    PkcsEncoding::Pkcs1 => {
+                        private_pkcs1_to_bytes(key, to.encoding)
+                    }
+                    _ => Err(Error::Unsupported(
+                        "only supported rsa key".to_string(),
+                    )),
+                }
+            }
         }
+        _ => Err(Error::Unsupported("only supported rsa key".to_string())),
     }
 }
 
-fn pkcs1_to_bytes<E>(input: E, encoding: KeyEncoding) -> Result<Vec<u8>>
-    where E: pkcs1::EncodeRsaPrivateKey + pkcs1::EncodeRsaPublicKey {
+// =================================== pkcs8 start
+// ===================================
+fn private_bytes_to_pkcs8<E>(input: &[u8], encoding: KeyEncoding) -> Result<E>
+where
+    E: pkcs8::DecodePrivateKey,
+{
     Ok(match encoding {
         KeyEncoding::Pem => {
-            input.to_pkcs1_pem(base64ct::LineEnding::LF).context("invalid pkcs1 pem key")
-                .as_bytes().to_vec()
+            let key_string = String::from_utf8(input.to_vec())
+                .context("invalid utf-8 key")?;
+            E::from_pkcs8_pem(&key_string)
+                .context("invalid sec1 pem private key")?
         }
         KeyEncoding::Der => {
-            input.to_pkcs1_der().context("invalid pkcs1 der key")?
-                .as_bytes().to_vec()
+            E::from_pkcs8_der(input).context("invalid sec1 der private key")?
         }
     })
 }
 
-
-fn bytes_to_sec1<E>(input: &[u8], encoding: KeyEncoding) -> Result<E>
-    where E: sec1::DecodeEcPrivateKey + sec1:: {
-    match encoding {
-        KeyEncoding::Pem => {
-            let key_string = String::from_utf8(input.to_vec()).context("invalid utf-8 key")?;
-            E::from_pkcs1_pem(&key_string)
-                .context("invalid pkcs1 pem key")?
-        }
-        KeyEncoding::Der => {
-            E::from_pkcs1_der(input)
-                .context("invalid pkcs1 der key")?
-        }
-    }
-}
-
-fn sec1_to_bytes<E>(input: E, encoding: KeyEncoding) -> Result<Vec<u8>>
-    where E: pkcs1::EncodeRsaPrivateKey + pkcs1::EncodeRsaPublicKey {
+fn public_bytes_to_pkcs8<E>(input: &[u8], encoding: KeyEncoding) -> Result<E>
+where
+    E: pkcs8::DecodePublicKey,
+{
     Ok(match encoding {
         KeyEncoding::Pem => {
-            input.to_pkcs1_pem(base64ct::LineEnding::LF).context("invalid pkcs1 pem key")
-                .as_bytes().to_vec()
+            let key_string = String::from_utf8(input.to_vec())
+                .context("invalid utf-8 key")?;
+            E::from_public_key_pem(&key_string)
+                .context("invalid sec1 pem public key")?
         }
-        KeyEncoding::Der => {
-            input.to_pkcs1_der().context("invalid pkcs1 der key")?
-                .as_bytes().to_vec()
-        }
+        KeyEncoding::Der => E::from_public_key_der(input)
+            .context("invalid sec1 der public key")?,
     })
 }
 
-fn sec1_to_pkcs8<E>(input: &[u8], is_public: bool, from: KeyEncoding, to: KeyEncoding) -> Result<Vec<u8>>
-    where E: pkcs8::EncodePublicKey + pkcs8::EncodePrivateKey
-    + sec1::DecodeEcPrivateKey + spki::DecodePublicKey {
-    let pkcs8_key = match from {
-        KeyEncoding::Pem => {
-            let key_string = String::from_utf8(input.to_vec()).context("invalid utf-8 key")?;
-            if is_public {
-                E::from_public_key_pem(&key_string)
-                    .context("invalid sec1 pem public key")?
-            } else {
-                E::from_sec1_pem(&key_string)
-                    .context("invalid sec1 pem private key")?
-            }
-        }
-        KeyEncoding::Der => {
-            if is_public {
-                E::from_public_key_der(input)
-                    .context("invalid sec1 der public key")?
-            } else {
-                E::from_sec1_der(input)
-                    .context("invalid sec1 der private key")?
-            }
-        }
-    };
-
-    Ok(match to {
-        KeyEncoding::Pem => {
-            if is_public {
-                pkcs8_key
-                    .to_public_key_pem(base64ct::LineEnding::LF)
-                    .context("invalid pkcs8 pem public key")?
-                    .as_bytes()
-                    .to_vec()
-            } else {
-                pkcs8_key
-                    .to_pkcs8_pem(base64ct::LineEnding::LF)
-                    .context("invalid pkcs8 pem private key")?
-                    .as_bytes()
-                    .to_vec()
-            }
-        }
-        KeyEncoding::Der => {
-            if is_public {
-                pkcs8_key
-                    .to_public_key_der()
-                    .context("invalid pkcs8 der public key")?
-                    .as_bytes()
-                    .to_vec()
-            } else {
-                pkcs8_key
-                    .to_pkcs8_der()
-                    .context("invalid pkcs8 der private key")?
-                    .as_bytes()
-                    .to_vec()
-            }
-        }
-    })
-}
-
-fn pkcs8_to_sec1<E>(input: &[u8], is_public: bool, from: KeyEncoding, to: KeyEncoding) -> Result<Vec<u8>>
-    where E: pkcs8::DecodePublicKey + pkcs8::DecodePrivateKey
-    + sec1::EncodeEcPrivateKey + spki::EncodePublicKey {
-    let pkcs8_key = match from {
-        KeyEncoding::Pem => {
-            let key_string = String::from_utf8(input.to_vec()).context("invalid utf-8 key")?;
-            if is_public {
-                E::from_public_key_pem(&key_string)
-                    .context("invalid pkcs8 pem public key")?
-            } else {
-                E::from_pkcs8_pem(&key_string)
-                    .context("invalid pkcs8 pem private key")?
-            }
-        }
-        KeyEncoding::Der => {
-            if is_public {
-                E::from_public_key_der(input)
-                    .context("invalid pkcs8 der public key")?
-            } else {
-                E::from_pkcs8_der(input)
-                    .context("invalid pkcs8 der private key")?
-            }
-        }
-    };
-
-    Ok(match to {
-        KeyEncoding::Pem => {
-            if is_public {
-                pkcs8_key
-                    .to_public_key_pem(base64ct::LineEnding::LF)
-                    .context("invalid sec1 pem public key")?
-                    .as_bytes()
-                    .to_vec()
-            } else {
-                pkcs8_key
-                    .to_sec1_pem(base64ct::LineEnding::LF)
-                    .context("invalid sec1 pem private key")?
-                    .as_bytes()
-                    .to_vec()
-            }
-        }
-        KeyEncoding::Der => {
-            if is_public {
-                pkcs8_key
-                    .to_public_key_der()
-                    .context("invalid sec1 der public key")?
-                    .as_bytes()
-                    .to_vec()
-            } else {
-                pkcs8_key
-                    .to_sec1_der()
-                    .context("invalid sec1 der private key")?
-                    .as_bytes()
-                    .to_vec()
-            }
-        }
-    })
-}
-
-
-fn pkcs1_to_pkcs8<E>(input: &[u8], is_public: bool, from: KeyEncoding, to: KeyEncoding) -> Result<Vec<u8>>
-    where E: pkcs8::EncodePublicKey + pkcs8::EncodePrivateKey
-    + sec1::DecodeEcPrivateKey + sec1::DecodeEcPrivateKey {
-    let pkcs8_key = match from {
-        KeyEncoding::Pem => {
-            let key_string = String::from_utf8(input.to_vec()).context("invalid utf-8 key")?;
-            if is_public {
-                E::from_sec1_pem(&key_string)
-                    .context("invalid sec1 pem public key")?
-            } else {
-                E::from_sec1_pem(&key_string)
-                    .context("invalid sec1 pem private key")?
-            }
-        }
-        KeyEncoding::Der => {
-            if is_public {
-                E::from_sec1_der(input)
-                    .context("invalid sec1 der public key")?
-            } else {
-                E::from_sec1_der(input)
-                    .context("invalid sec1 der private key")?
-            }
-        }
-    };
-
-    Ok(match to {
-        KeyEncoding::Pem => {
-            if is_public {
-                pkcs8_key
-                    .to_public_key_pem(base64ct::LineEnding::LF)
-                    .context("invalid pkcs8 pem public key")?
-                    .as_bytes()
-                    .to_vec()
-            } else {
-                pkcs8_key
-                    .to_pkcs8_pem(base64ct::LineEnding::LF)
-                    .context("invalid pkcs8 pem private key")?
-                    .as_bytes()
-                    .to_vec()
-            }
-        }
-        KeyEncoding::Der => {
-            if is_public {
-                pkcs8_key
-                    .to_public_key_der()
-                    .context("invalid pkcs8 der public key")?
-                    .as_bytes()
-                    .to_vec()
-            } else {
-                pkcs8_key
-                    .to_pkcs8_der()
-                    .context("invalid pkcs8 der private key")?
-                    .as_bytes()
-                    .to_vec()
-            }
-        }
-    })
-}
-
-fn pkcs8_to_pkcs1<E>(input: &[u8], is_public: bool, from: KeyEncoding, to: KeyEncoding) -> Result<Vec<u8>>
-    where E: pkcs8::DecodePublicKey + pkcs8::DecodePrivateKey
-    + pkcs1::EncodeRsaPrivateKey + pkcs1::EncodeRsaPublicKey {
-    let pkcs8_key = match from {
-        KeyEncoding::Pem => {
-            let key_string = String::from_utf8(input.to_vec()).context("invalid utf-8 key")?;
-            if is_public {
-                E::from_public_key_pem(&key_string)
-                    .context("invalid pkcs8 pem public key")?
-            } else {
-                E::from_pkcs8_pem(&key_string)
-                    .context("invalid pkcs8 pem private key")?
-            }
-        }
-        KeyEncoding::Der => {
-            if is_public {
-                E::from_public_key_der(input)
-                    .context("invalid pkcs8 der public key")?
-            } else {
-                E::from_pkcs8_der(input)
-                    .context("invalid pkcs8 der private key")?
-            }
-        }
-    };
-
-    Ok(match to {
-        KeyEncoding::Pem => {
-            if is_public {
-                pkcs8_key
-                    .to_pkcs1_pem(base64ct::LineEnding::LF)
-                    .context("invalid sec1 pem public key")?
-                    .as_bytes()
-                    .to_vec()
-            } else {
-                pkcs8_key
-                    .to_pkcs1_pem(base64ct::LineEnding::LF)
-                    .context("invalid sec1 pem private key")?
-                    .as_bytes()
-                    .to_vec()
-            }
-        }
-        KeyEncoding::Der => {
-            if is_public {
-                pkcs8_key
-                    .to_public_key_der()
-                    .context("invalid sec1 der public key")?
-                    .as_bytes()
-                    .to_vec()
-            } else {
-                pkcs8_key
-                    .to_sec1_der()
-                    .context("invalid sec1 der private key")?
-                    .as_bytes()
-                    .to_vec()
-            }
-        }
-    })
-}
-
-fn pkcs8_pem_to_der<E>(input: E, is_public: bool) -> Result<ByteBuf>
-    where
-        E: spki::EncodePublicKey + pkcs8::EncodePrivateKey,
+fn private_pkcs8_to_bytes<E>(input: E, encoding: KeyEncoding) -> Result<Vec<u8>>
+where
+    E: pkcs8::EncodePrivateKey,
 {
-    Ok(ByteBuf::from(if is_public {
-        input
-            .to_public_key_der()
-            .context("public key pem to der failed")?
-            .as_bytes()
-            .to_vec()
-    } else {
-        input
-            .to_pkcs8_der()
-            .context("private key pem to der failed")?
-            .as_bytes()
-            .to_vec()
-    }))
-}
-
-fn pkcs8_der_to_pem<E>(input: E, is_public: bool) -> Result<ByteBuf>
-    where
-        E: spki::EncodePublicKey + pkcs8::EncodePrivateKey,
-{
-    Ok(ByteBuf::from(if is_public {
-        input
-            .to_public_key_pem(base64ct::LineEnding::LF)
-            .context("public key der to pem failed")?
-            .as_bytes()
-            .to_vec()
-    } else {
-        input
+    Ok(match encoding {
+        KeyEncoding::Pem => input
             .to_pkcs8_pem(base64ct::LineEnding::LF)
-            .context("private key der to pem failed")?
+            .context("invalid pkcs8 pem private key")?
             .as_bytes()
-            .to_vec()
-    }))
+            .to_vec(),
+        KeyEncoding::Der => input
+            .to_pkcs8_der()
+            .context("invalid pkcs8 der private key")?
+            .as_bytes()
+            .to_vec(),
+    })
+}
+fn public_pkcs8_to_bytes<E>(input: E, encoding: KeyEncoding) -> Result<Vec<u8>>
+where
+    E: spki::EncodePublicKey,
+{
+    Ok(match encoding {
+        KeyEncoding::Pem => input
+            .to_public_key_pem(base64ct::LineEnding::LF)
+            .context("invalid pkcs8 pem public key")?
+            .into_bytes(),
+        KeyEncoding::Der => input
+            .to_public_key_der()
+            .context("invalid pkcs8 der public key")?
+            .to_vec(),
+    })
+}
+// =================================== pkcs8 end
+// ===================================
+
+// =================================== pkcs1 start
+// ===================================
+fn public_bytes_to_pkcs1<E>(input: &[u8], encoding: KeyEncoding) -> Result<E>
+where
+    E: pkcs1::DecodeRsaPublicKey,
+{
+    Ok(match encoding {
+        KeyEncoding::Pem => {
+            let key_string = String::from_utf8(input.to_vec())
+                .context("invalid utf-8 key")?;
+            E::from_pkcs1_pem(&key_string)
+                .context("invalid pkcs1 pem public key")?
+        }
+        KeyEncoding::Der => {
+            E::from_pkcs1_der(input).context("invalid pkcs1 der public key")?
+        }
+    })
+}
+
+fn private_bytes_to_pkcs1<E>(input: &[u8], encoding: KeyEncoding) -> Result<E>
+where
+    E: pkcs1::DecodeRsaPrivateKey,
+{
+    Ok(match encoding {
+        KeyEncoding::Pem => {
+            let key_string = String::from_utf8(input.to_vec())
+                .context("invalid utf-8 key")?;
+            <E as pkcs1::DecodeRsaPrivateKey>::from_pkcs1_pem(&key_string)
+                .context("invalid pkcs1 pem private key")?
+        }
+        KeyEncoding::Der => {
+            <E as pkcs1::DecodeRsaPrivateKey>::from_pkcs1_der(input)
+                .context("invalid pkcs1 der private key")?
+        }
+    })
+}
+
+fn private_pkcs1_to_bytes<E>(input: E, encoding: KeyEncoding) -> Result<Vec<u8>>
+where
+    E: pkcs1::EncodeRsaPrivateKey,
+{
+    Ok(match encoding {
+        KeyEncoding::Pem => input
+            .to_pkcs1_pem(base64ct::LineEnding::LF)
+            .context("invalid pkcs1 pem private key")?
+            .as_bytes()
+            .to_vec(),
+        KeyEncoding::Der => input
+            .to_pkcs1_der()
+            .context("invalid pkcs1 der key")?
+            .as_bytes()
+            .to_vec(),
+    })
+}
+
+fn public_pkcs1_to_bytes<E>(input: E, encoding: KeyEncoding) -> Result<Vec<u8>>
+where
+    E: pkcs1::EncodeRsaPublicKey,
+{
+    Ok(match encoding {
+        KeyEncoding::Pem => input
+            .to_pkcs1_pem(base64ct::LineEnding::LF)
+            .context("invalid pkcs1 pem public key")?
+            .as_bytes()
+            .to_vec(),
+        KeyEncoding::Der => input
+            .to_pkcs1_der()
+            .context("invalid pkcs1 der key")?
+            .as_bytes()
+            .to_vec(),
+    })
+}
+// =================================== pkcs1 end
+// =================================== =================================== sec1
+// start ===================================
+
+fn private_bytes_to_sec1<E>(input: &[u8], encoding: KeyEncoding) -> Result<E>
+where
+    E: sec1::DecodeEcPrivateKey,
+{
+    Ok(match encoding {
+        KeyEncoding::Pem => {
+            let key_string = String::from_utf8(input.to_vec())
+                .context("invalid utf-8 key")?;
+            E::from_sec1_pem(&key_string)
+                .context("invalid sec1 pem public key")?
+        }
+        KeyEncoding::Der => {
+            E::from_sec1_der(input).context("invalid sec1 der public key")?
+        }
+    })
+}
+
+fn public_bytes_to_sec1<E>(input: &[u8], encoding: KeyEncoding) -> Result<E>
+where
+    E: spki::DecodePublicKey,
+{
+    Ok(match encoding {
+        KeyEncoding::Pem => {
+            let key_string = String::from_utf8(input.to_vec())
+                .context("invalid utf-8 key")?;
+            E::from_public_key_pem(&key_string)
+                .context("invalid sec1 pem public key")?
+        }
+        KeyEncoding::Der => E::from_public_key_der(input)
+            .context("invalid sec1 der public key")?,
+    })
+}
+
+fn private_sec1_to_bytes<E>(input: E, encoding: KeyEncoding) -> Result<Vec<u8>>
+where
+    E: sec1::EncodeEcPrivateKey,
+{
+    Ok(match encoding {
+        KeyEncoding::Pem => input
+            .to_sec1_pem(base64ct::LineEnding::LF)
+            .context("to sec1 pem private key failed")?
+            .as_bytes()
+            .to_vec(),
+        KeyEncoding::Der => input
+            .to_sec1_der()
+            .context("to sec1 der private key failed")?
+            .as_bytes()
+            .to_vec(),
+    })
+}
+
+fn public_sec1_to_bytes<E>(input: E, encoding: KeyEncoding) -> Result<Vec<u8>>
+where
+    E: spki::EncodePublicKey,
+{
+    Ok(match encoding {
+        KeyEncoding::Pem => input
+            .to_public_key_pem(base64ct::LineEnding::LF)
+            .context("to sec1 pem public key failed")?
+            .as_bytes()
+            .to_vec(),
+        KeyEncoding::Der => input
+            .to_public_key_der()
+            .context("to sec1 der public key failed")?
+            .as_bytes()
+            .to_vec(),
+    })
 }

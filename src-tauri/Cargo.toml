@@ -80,6 +80,7 @@ elliptic-curve = { version = "0.13.8", features = [
   "digest",
   "alloc",
   "ecdh",
+  "serde",
 ] }
 p256 = { version = "0.13.2", features = ["pkcs8", "pem"] }
 p384 = { version = "0.13.0", features = ["pkcs8", "pem"] }

@@ -1,12 +1,6 @@
 import { forwardRef } from "react";
-import { TextCodecRef, TextCodecSelectProps } from "./codec";
+import { TextCodecRef, TextCodecSelectProps, TextEncoding } from "./codec";
 import { CodecSelect } from "./CodecSelect";
-
-export enum TextEncoding {
-	Base64 = "base64",
-	Hex = "hex",
-	UTF8 = "utf8",
-}
 
 export const TextSelectCodec = forwardRef<TextCodecRef, TextCodecSelectProps>(
 	({ codecor, getInputs: getInput, setInputs: setInput, props }, ref) => {

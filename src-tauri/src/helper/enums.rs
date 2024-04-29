@@ -8,7 +8,6 @@ pub enum EccCurveName {
     NistP384,
     NistP521,
     Secp256k1,
-    Curve25519,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
