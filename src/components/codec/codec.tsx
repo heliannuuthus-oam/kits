@@ -14,6 +14,7 @@ export type CodecRef<T> = {
 export type CodecRadioProps<T> = {
 	props: RadioGroupProps;
 	codecor: Codecor<T>;
+	callback?: (value: T) => void;
 	getInputs: () => Record<string, string>;
 	setInputs: (input: Record<string, string>) => void;
 };
@@ -21,6 +22,7 @@ export type CodecRadioProps<T> = {
 export type CodecSelectProps<T> = {
 	props: SelectProps;
 	codecor: Codecor<T>;
+	callback?: (value: T) => void;
 	getInputs: () => Record<string, string>;
 	setInputs: (input: Record<string, string>) => void;
 };

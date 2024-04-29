@@ -3,13 +3,23 @@ import { TextCodecRef, TextCodecSelectProps, TextEncoding } from "./codec";
 import { CodecSelect } from "./CodecSelect";
 
 export const TextSelectCodec = forwardRef<TextCodecRef, TextCodecSelectProps>(
-	({ codecor, getInputs: getInput, setInputs: setInput, props }, ref) => {
+	(
+		{
+			codecor,
+			getInputs,
+			setInputs,
+			props,
+			callback = (_: TextEncoding) => {},
+		},
+		ref
+	) => {
 		return (
 			<CodecSelect
 				ref={ref}
 				codecor={codecor}
-				getInputs={getInput}
-				setInputs={setInput}
+				callback={callback}
+				getInputs={getInputs}
+				setInputs={setInputs}
 				props={{
 					defaultValue: TextEncoding.Base64,
 					options: [

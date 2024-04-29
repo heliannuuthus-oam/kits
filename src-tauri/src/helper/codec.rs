@@ -3,6 +3,7 @@ use base64ct::{
     Base64, Base64Unpadded, Base64Url, Base64UrlUnpadded, Encoding,
 };
 use serde_bytes::ByteBuf;
+use tracing::info;
 
 use super::{
     enums::{EccCurveName, KeyEncoding},
@@ -107,6 +108,11 @@ pub fn pkcs8_sec1_transfer(
     to: PkcsGoods,
     is_public: bool,
 ) -> Result<ByteBuf> {
+    info!(
+        "pkcs8_sec1_converter, curve_name: {:?}, from: {:?}, to: {:?}, \
+         public: {:?}",
+        curve_name, from, to, is_public
+    );
     Ok(ByteBuf::from(match curve_name {
         EccCurveName::NistP256 => pkcs8_sec1_transfer_inner::<p256::NistP256>(
             input.as_ref(),
@@ -187,7 +193,7 @@ where
         }
         PkcsEncoding::Sec1 => {
             if is_public {
-                let key = public_bytes_to_pkcs8::<elliptic_curve::PublicKey<C>>(
+                let key = public_bytes_to_sec1::<elliptic_curve::PublicKey<C>>(
                     input,
                     from.encoding,
                 )?;
@@ -203,7 +209,7 @@ where
                     )),
                 }
             } else {
-                let key = private_bytes_to_pkcs8::<elliptic_curve::SecretKey<C>>(
+                let key = private_bytes_to_sec1::<elliptic_curve::SecretKey<C>>(
                     input,
                     from.encoding,
                 )?;

@@ -4,10 +4,20 @@ import { TextEncoding } from "./codec";
 import { CodecRadio } from "./CodecRadio";
 
 export const TextRadioCodec = forwardRef<TextCodecRef, TextCodecRadioProps>(
-	({ codecor, getInputs: getInput, setInputs: setInput, props }, ref) => {
+	(
+		{
+			codecor,
+			getInputs: getInput,
+			setInputs: setInput,
+			props,
+			callback = (_: TextEncoding) => {},
+		},
+		ref
+	) => {
 		return (
 			<CodecRadio
 				ref={ref}
+				callback={callback}
 				codecor={codecor}
 				getInputs={getInput}
 				setInputs={setInput}

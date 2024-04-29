@@ -1,7 +1,9 @@
 import { invoke } from "@tauri-apps/api";
 import { RadioGroupProps, SelectProps } from "antd";
+import { TextCodecor, TextEncoding } from "../codec/codec";
 
 export interface Converter<T> {
+	textCodecor: TextCodecor;
 	convert: (
 		input: Uint8Array,
 		from: T,
@@ -13,11 +15,13 @@ export interface Converter<T> {
 export type ConvertRef<T> = {
 	getEncoding: () => T;
 	setEncoding: (encoding: T) => void;
+	getTextEncoding: () => TextEncoding;
+	setTextEncoding: (encoding: TextEncoding) => void;
 };
 
 export type ConvertRadioProps<T> = {
 	props: RadioGroupProps;
-	codecor: Converter<T>;
+	converter: Converter<T>;
 	getInputs: () => Record<string, string>;
 	setInputs: (input: Record<string, string>) => void;
 };
@@ -25,9 +29,16 @@ export type ConvertRadioProps<T> = {
 export type ConvertSelectProps<T> = {
 	props: SelectProps;
 	converter: Converter<T>;
-	getInputs: () => Record<string, Uint8Array>;
-	setInputs: (input: Record<string, Uint8Array>) => void;
+	getInputs: () => Record<string, string>;
+	setInputs: (input: Record<string, string>) => void;
 };
+
+export enum CurveName {
+	NIST_P256 = "nistp256",
+	NIST_P384 = "nistp384",
+	NIST_P521 = "nistp521",
+	Secp256k1 = "secp256k1",
+}
 
 export enum Pkcs1Encoding {
 	PKCS1_PEM = "pkcs1_pem",
@@ -77,13 +88,17 @@ export const PkcsEncodings: Record<PkcsEncoding, PkcsEncodingProps> = {
 export const RsaPkiEncoding = { ...Pkcs1Encoding, ...Pkcs8Encoding };
 export type RsaPkiEncoding = typeof RsaPkiEncoding;
 
+TextCodecor;
 type PkcsEncoding = Pkcs8Encoding | Sec1Encoding | Pkcs1Encoding;
+type RsaEncoding = Pkcs8Encoding | Pkcs1Encoding;
+type EccEncoding = Pkcs8Encoding | Sec1Encoding;
 
-export class PkcsConverter implements Converter<PkcsEncoding> {
+export class RsaConverter implements Converter<RsaEncoding> {
+	textCodecor: TextCodecor = new TextCodecor();
 	async convert(
 		input: Uint8Array,
-		from: PkcsEncoding,
-		to: PkcsEncoding,
+		from: RsaEncoding,
+		to: RsaEncoding,
 		isPublic: boolean
 	): Promise<Uint8Array> {
 		if (from === to) {
@@ -94,8 +109,6 @@ export class PkcsConverter implements Converter<PkcsEncoding> {
 		let output;
 		const fromData = PkcsEncodings[from];
 		const toData = PkcsEncodings[to];
-		console.log(fromData);
-		console.log(toData);
 
 		switch (true) {
 			case fromData.pkcs === Pkcs.Pkcs8 && toData.pkcs === Pkcs.Pkcs1:
@@ -109,13 +122,48 @@ export class PkcsConverter implements Converter<PkcsEncoding> {
 					isPublic,
 				});
 				break;
+			default:
+				throw new Error(
+					`unsupported pkcs: ${fromData.pkcs} encoding: ${fromData.encoding} convert pkcs: ${toData.pkcs} encoding: ${toData.encoding}`
+				);
+		}
+		TextCodecor;
+		return output;
+	}
+}
+
+export class EccConverter implements Converter<EccEncoding> {
+	textCodecor: TextCodecor = new TextCodecor();
+	public curveName: CurveName = CurveName.NIST_P256;
+	setCurveName(curveName: CurveName) {
+		this.curveName = curveName;
+	}
+
+	async convert(
+		input: Uint8Array,
+		from: EccEncoding,
+		to: EccEncoding,
+		isPublic: boolean
+	): Promise<Uint8Array> {
+		if (from === to) {
+			return new Promise<Uint8Array>((resovle, _) => {
+				resovle(input);
+			});
+		}
+		let output;
+		const fromData = PkcsEncodings[from];
+		const toData = PkcsEncodings[to];
+
+		switch (true) {
 			case fromData.pkcs === Pkcs.Pkcs8 && toData.pkcs === Pkcs.Sec1:
 			case fromData.pkcs === Pkcs.Sec1 && toData.pkcs === Pkcs.Pkcs8:
 			case fromData.pkcs === Pkcs.Sec1 && toData.pkcs === Pkcs.Sec1:
+			case fromData.pkcs === Pkcs.Pkcs8 && toData.pkcs === Pkcs.Pkcs8:
 				output = await invoke<Uint8Array>("pkcs8_sec1_transfer", {
+					curveName: this.curveName,
 					input,
-					from,
-					to,
+					from: { ...fromData },
+					to: { ...toData },
 					isPublic,
 				});
 				break;
@@ -128,7 +176,11 @@ export class PkcsConverter implements Converter<PkcsEncoding> {
 	}
 }
 
-export const pkcsConverter = new PkcsConverter();
+export const rsaConverter = new RsaConverter();
+export const eccConverter = new EccConverter();
 
-export type PkcsCodecRef = ConvertRef<PkcsEncoding>;
-export type PkcsCodecSelectProps = ConvertSelectProps<PkcsEncoding>;
+export type RsaConvertRef = ConvertRef<RsaEncoding>;
+export type RsaConvertSelectProps = ConvertSelectProps<RsaEncoding>;
+
+export type EccConvertRef = ConvertRef<EccEncoding>;
+export type EccConvertSelectProps = ConvertSelectProps<EccEncoding>;

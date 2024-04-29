@@ -12,9 +12,8 @@ use crate::{
     helper::{
         common::KeyTuple,
         enums::{
-            AesEncryptionPadding, EccCurveName,
-            EciesEncryptionAlgorithm, EncryptionMode, KeyEncoding,
-            PkcsEncoding,
+            AesEncryptionPadding, EccCurveName, EciesEncryptionAlgorithm,
+            EncryptionMode, KeyEncoding, PkcsEncoding,
         },
         errors::{Error, Result},
     },
@@ -23,21 +22,19 @@ use crate::{
 #[tauri::command]
 pub fn generate_ecc(
     curve_name: EccCurveName,
-    pkcs_encoding: PkcsEncoding,
+    pkcs: PkcsEncoding,
     encoding: KeyEncoding,
 ) -> Result<KeyTuple> {
     match curve_name {
-        EccCurveName::NistP256 => {
-            generate_ecc_key::<NistP256>(pkcs_encoding, encoding)
-        }
+        EccCurveName::NistP256 => generate_ecc_key::<NistP256>(pkcs, encoding),
         EccCurveName::NistP384 => {
-            generate_ecc_key::<p384::NistP384>(pkcs_encoding, encoding)
+            generate_ecc_key::<p384::NistP384>(pkcs, encoding)
         }
         EccCurveName::NistP521 => {
-            generate_ecc_key::<p521::NistP521>(pkcs_encoding, encoding)
+            generate_ecc_key::<p521::NistP521>(pkcs, encoding)
         }
         EccCurveName::Secp256k1 => {
-            generate_ecc_key::<k256::Secp256k1>(pkcs_encoding, encoding)
+            generate_ecc_key::<k256::Secp256k1>(pkcs, encoding)
         }
     }
 }
@@ -47,7 +44,7 @@ pub fn ecies(
     curve_name: EccCurveName,
     key: ByteBuf,
     plaintext: ByteBuf,
-    pkcs_encoding: PkcsEncoding,
+    pkcs: PkcsEncoding,
     encoding: KeyEncoding,
     ea: EciesEncryptionAlgorithm,
     for_encryption: bool,
@@ -59,7 +56,7 @@ pub fn ecies(
         EccCurveName::NistP256 => ecies_inner::<NistP256>(
             plaintext,
             key,
-            pkcs_encoding,
+            pkcs,
             encoding,
             ea,
             for_encryption,
@@ -67,7 +64,7 @@ pub fn ecies(
         EccCurveName::NistP384 => ecies_inner::<p384::NistP384>(
             plaintext,
             key,
-            pkcs_encoding,
+            pkcs,
             encoding,
             ea,
             for_encryption,
@@ -75,7 +72,7 @@ pub fn ecies(
         EccCurveName::NistP521 => ecies_inner::<p521::NistP521>(
             plaintext,
             key,
-            pkcs_encoding,
+            pkcs,
             encoding,
             ea,
             for_encryption,
@@ -83,7 +80,7 @@ pub fn ecies(
         EccCurveName::Secp256k1 => ecies_inner::<k256::Secp256k1>(
             plaintext,
             key,
-            pkcs_encoding,
+            pkcs,
             encoding,
             ea,
             for_encryption,
@@ -366,8 +363,7 @@ mod test {
     use crate::{
         crypto::ecc::{ecies, generate_ecc},
         helper::enums::{
-            EccCurveName, EciesEncryptionAlgorithm, KeyEncoding,
-            PkcsEncoding,
+            EccCurveName, EciesEncryptionAlgorithm, KeyEncoding, PkcsEncoding,
         },
     };
 

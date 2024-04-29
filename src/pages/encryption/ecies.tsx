@@ -11,7 +11,7 @@ import {
 	Typography,
 } from "antd";
 import TextArea, { TextAreaProps } from "antd/es/input/TextArea";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	TextCodecRef,
 	TextEncoding,
@@ -22,11 +22,12 @@ import { TextRadioCodec } from "../../components/codec/TextCodecRadio";
 import { TextSelectCodec } from "../../components/codec/TextCodecSelect";
 import {
 	Pkcs8Encoding,
-	PkcsCodecRef,
-	pkcsConverter,
+	EccConvertRef,
 	PkcsEncodings,
+	eccConverter,
+	CurveName,
 } from "../../components/converter/converter";
-import { PkcsSelectConvert } from "../../components/converter/PkcsCodecSelect";
+import { EccSelectConvert } from "../../components/converter/EccConvertSelect";
 
 const DefaultTextArea = ({ style, ...props }: TextAreaProps) => {
 	return <TextArea {...props} style={{ resize: "none", ...style }}></TextArea>;
@@ -46,12 +47,6 @@ const initialValues: EciesEncryptionForm = {
 	output: null,
 };
 
-enum CurveName {
-	NIST_P256 = "nistp256",
-	NIST_P384 = "nistp384",
-	NIST_P521 = "nistp521",
-	Secp256k1 = "secp256k1",
-}
 const curveNames: SelectProps["options"] = (
 	Object.keys(CurveName) as Array<keyof typeof CurveName>
 ).map((key) => {
@@ -69,7 +64,7 @@ const EciesEncryption = () => {
 	const [form] = Form.useForm<EciesEncryptionForm>();
 	const [curveName, setCurveName] = useState<CurveName>(CurveName.NIST_P256);
 	const [generating, setGenerating] = useState<boolean>(false);
-	const pkiKeyCodecEl = useRef<PkcsCodecRef>(null);
+	const pkiKeyCodecEl = useRef<EccConvertRef>(null);
 	const keyCodecEl = useRef<TextCodecRef>(null);
 	const inputCodecEl = useRef<TextCodecRef>(null);
 	const outputCodecEl = useRef<TextCodecRef>(null);
@@ -81,6 +76,10 @@ const EciesEncryption = () => {
 	const inputValidator: FormRule[] = [
 		{ required: true, message: "input is required" },
 	];
+
+	useEffect(() => {
+		pkiKeyCodecEl.current?.setTextEncoding(TextEncoding.UTF8);
+	}, [pkiKeyCodecEl]);
 
 	const _getPrivateKey = async (): Promise<Uint8Array> => {
 		const encoding = keyCodecEl.current?.getEncoding() || TextEncoding.Base64;
@@ -100,6 +99,7 @@ const EciesEncryption = () => {
 			format: pkcs8Encoding,
 		});
 	};
+
 	const derivePublicKey = async () => {
 		try {
 			const publicKeyBytes = await _derivePublicKey(null);
@@ -115,11 +115,14 @@ const EciesEncryption = () => {
 		try {
 			const pkcs8Encoding =
 				pkiKeyCodecEl.current?.getEncoding() || Pkcs8Encoding.PKCS8_PEM;
-			const privateKeyBytes = await invoke<Uint8Array>("generate_ecc", {
-				curveName: curveName,
-				...PkcsEncodings[pkcs8Encoding],
-			});
-			const publicKeyBytes = await _derivePublicKey(privateKeyBytes);
+			const [privateKeyBytes, publicKeyBytes] = await invoke<Uint8Array[]>(
+				"generate_ecc",
+				{
+					curveName,
+					...PkcsEncodings[pkcs8Encoding],
+				}
+			);
+
 			const encoding = keyCodecEl.current?.getEncoding() || TextEncoding.Base64;
 			const [publicKey, privateKey] = await Promise.all([
 				textCodecor.encode(encoding, publicKeyBytes),
@@ -200,8 +203,8 @@ const EciesEncryption = () => {
 							style={{ height: keyHeight }}
 						>
 							<Form.Item noStyle>
-								<PkcsSelectConvert
-									converter={pkcsConverter}
+								<EccSelectConvert
+									converter={eccConverter}
 									props={{
 										disabled: generating,
 										style: {
@@ -212,12 +215,31 @@ const EciesEncryption = () => {
 									getInputs={() =>
 										form.getFieldsValue(["privateKey", "publicKey"])
 									}
-									setInputs={(inputs: Record<string, Uint8Array>) =>
-										form.setFieldsValue(inputs)
-									}
+									setInputs={(inputs) => {
+										form.setFieldsValue(inputs);
+									}}
 									ref={pkiKeyCodecEl}
 								/>
 							</Form.Item>
+							<TextSelectCodec
+								ref={keyCodecEl}
+								codecor={textCodecor}
+								getInputs={() =>
+									form.getFieldsValue(["privateKey", "publicKey"])
+								}
+								callback={(value) => {
+									pkiKeyCodecEl.current?.setTextEncoding(value);
+								}}
+								setInputs={form.setFieldsValue}
+								props={{
+									disabled: generating,
+									style: {
+										minWidth: keyButtonWidth,
+										minHeight: keyButtonHeight,
+									},
+									defaultValue: TextEncoding.UTF8,
+								}}
+							/>
 							<Button
 								loading={generating}
 								onClick={derivePublicKey}
@@ -230,26 +252,14 @@ const EciesEncryption = () => {
 							<Select
 								disabled={generating}
 								value={curveName}
-								onChange={setCurveName}
+								onChange={(value) => {
+									eccConverter.setCurveName(value);
+									setCurveName(value);
+								}}
 								options={curveNames}
 								style={{ minWidth: keyButtonWidth, minHeight: keyButtonHeight }}
 							/>
-							<TextSelectCodec
-								ref={keyCodecEl}
-								codecor={textCodecor}
-								getInputs={() =>
-									form.getFieldsValue(["privateKey", "publicKey"])
-								}
-								setInputs={form.setFieldsValue}
-								props={{
-									disabled: generating,
-									style: {
-										minWidth: keyButtonWidth,
-										minHeight: keyButtonHeight,
-									},
-									defaultValue: TextEncoding.UTF8,
-								}}
-							/>
+
 							<Button
 								loading={generating}
 								type="primary"

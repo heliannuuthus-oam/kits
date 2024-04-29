@@ -32,6 +32,7 @@ function CodecSelectInner<T>(
 				inputs[key] = encoded;
 			}
 			props.setInputs(inputs);
+			props.callback && props.callback(value);
 			setEncoding(value);
 		} catch (err: unknown) {
 			openNotification(encoding, value, err as string);

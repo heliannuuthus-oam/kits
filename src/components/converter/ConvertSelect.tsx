@@ -2,28 +2,42 @@ import { Select } from "antd";
 import { ForwardedRef, forwardRef, useImperativeHandle, useState } from "react";
 import { ConvertRef } from "./converter";
 import { ConvertSelectProps } from "./converter";
+import { TextEncoding } from "../codec/codec";
 
 function ConvertSelectInner<T>(
 	props: ConvertSelectProps<T>,
 	ref: ForwardedRef<ConvertRef<T>>
 ) {
 	const [encoding, setEncoding] = useState<T>(props.props.defaultValue);
+	const [textEncoding, setTextEncoding] = useState<TextEncoding>(
+		TextEncoding.UTF8
+	);
 
 	const selectEncoding = async (value: T) => {
 		const inputs = props.getInputs();
 		try {
-			for (const [key, input] of Object.entries(inputs)) {
+			for (const [key, inputStr] of Object.entries(inputs)) {
+				console.log(inputStr);
+				const input = await props.converter.textCodecor.decode(
+					textEncoding,
+					inputStr
+				);
+				console.log(input);
+
 				const output = await props.converter.convert(
 					input,
 					encoding,
 					value,
 					key === "publicKey"
 				);
-				inputs[key] = output;
+				inputs[key] = await props.converter.textCodecor.encode(
+					textEncoding,
+					output
+				);
 			}
 			props.setInputs(inputs);
 			setEncoding(value);
-		} catch (err: unknown) {
+		} catch (err) {
 			console.log(err);
 		}
 	};
@@ -34,6 +48,12 @@ function ConvertSelectInner<T>(
 		},
 		setEncoding(encoding: T) {
 			setEncoding(encoding);
+		},
+		getTextEncoding() {
+			return textEncoding;
+		},
+		setTextEncoding(encoding: TextEncoding) {
+			setTextEncoding(encoding);
 		},
 	}));
 

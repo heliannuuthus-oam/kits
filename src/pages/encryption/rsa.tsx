@@ -451,22 +451,6 @@ const RsaEncryption = () => {
 									options={formats}
 								/>
 							</Form.Item>
-							<Button
-								loading={generating}
-								onClick={derivePublicKey}
-								disabled={generating}
-								style={{ minWidth: keyButtonWidth, minHeight: keyButtonHeight }}
-								type="primary"
-							>
-								derive
-							</Button>
-							<Select
-								disabled={generating}
-								value={keySize}
-								onChange={setKeySize}
-								options={keySizes}
-								style={{ minWidth: keyButtonWidth, minHeight: keyButtonHeight }}
-							/>
 							<TextSelectCodec
 								ref={keyCodecEl}
 								codecor={textCodecor}
@@ -483,6 +467,23 @@ const RsaEncryption = () => {
 									defaultValue: TextEncoding.UTF8,
 								}}
 							/>
+							<Button
+								loading={generating}
+								onClick={derivePublicKey}
+								disabled={generating}
+								style={{ minWidth: keyButtonWidth, minHeight: keyButtonHeight }}
+								type="primary"
+							>
+								derive
+							</Button>
+							<Select
+								disabled={generating}
+								value={keySize}
+								onChange={setKeySize}
+								options={keySizes}
+								style={{ minWidth: keyButtonWidth, minHeight: keyButtonHeight }}
+							/>
+
 							<Button
 								loading={generating}
 								type="primary"
