@@ -5,7 +5,6 @@ import {
 	Dropdown,
 	Flex,
 	Form,
-	FormItemProps,
 	FormRule,
 	Row,
 	Select,
@@ -23,6 +22,14 @@ import {
 import { DownOutlined } from "@ant-design/icons";
 import { TextRadioCodec } from "../../components/codec/TextCodecRadio";
 import { TextSelectCodec } from "../../components/codec/TextCodecSelect";
+import {
+	Pkcs8Encoding,
+	PkcsEncodings,
+	RsaConvertRef,
+	RsaPkiEncoding,
+	rsaConverter,
+} from "../../components/converter/converter";
+import { RsaSelectConvert } from "../../components/converter/RsaConvertSelect";
 
 const DefaultTextArea = ({ style, ...props }: TextAreaProps) => {
 	return <TextArea {...props} style={{ resize: "none", ...style }}></TextArea>;
@@ -43,13 +50,6 @@ enum Padding {
 	Oaep = "oaep",
 }
 
-enum Format {
-	Pkcs1_DER = "pkcs1-der",
-	Pkcs1_PEM = "pkcs1-pem",
-	Pkcs8_PEM = "pkcs8-pem",
-	Pkcs8_DER = "pkcs8-der",
-}
-
 const digests: SelectProps["options"] = (
 	Object.keys(Digest) as Array<keyof typeof Digest>
 ).map((key) => {
@@ -60,12 +60,6 @@ const paddings: SelectProps["options"] = (
 	Object.keys(Padding) as Array<keyof typeof Padding>
 ).map((key) => {
 	return { value: Padding[key], label: <span>{Padding[key].toString()}</span> };
-});
-
-const formats: SelectProps["options"] = (
-	Object.keys(Format) as Array<keyof typeof Format>
-).map((key) => {
-	return { value: Format[key], label: <span>{Format[key].toString()}</span> };
 });
 
 const keySizes: SelectProps["options"] = [2048, 3072, 4096].map((bit) => {
@@ -121,12 +115,6 @@ const initialValues: RsaEncryptionForm = {
 	output: null,
 };
 
-type FormatFormItem = {
-	value: Format;
-	validateStatus?: FormItemProps["validateStatus"];
-	errorMsg?: FormItemProps["help"];
-};
-
 const size = "middle";
 const keyHeight = 200;
 const keyButtonHeight = 32;
@@ -137,9 +125,7 @@ const RsaEncryption = () => {
 	const [keySize, setKeySize] = useState<number>(2048);
 	const padding = Form.useWatch("padding", form);
 	const digest = Form.useWatch("digest", form);
-	const [format, setFormat] = useState<FormatFormItem>({
-		value: Format.Pkcs8_PEM,
-	});
+	const rsaConvertEl = useRef<RsaConvertRef>(null);
 	const [generating, setGenerating] = useState<boolean>(false);
 	const keyCodecEl = useRef<TextCodecRef>(null);
 	const inputCodecEl = useRef<TextCodecRef>(null);
@@ -186,9 +172,12 @@ const RsaEncryption = () => {
 		if (key == null) {
 			key = await _getPrivateKey();
 		}
+		const encoding =
+			rsaConvertEl.current?.getEncoding() || Pkcs8Encoding.PKCS8_PEM;
+
 		return await invoke<Uint8Array>("derive_rsa", {
 			key: key,
-			format: format.value,
+			...PkcsEncodings[encoding],
 		});
 	};
 	const derivePublicKey = async () => {
@@ -205,12 +194,15 @@ const RsaEncryption = () => {
 		setGenerating(true);
 		try {
 			const encoding = keyCodecEl.current?.getEncoding() || TextEncoding.Base64;
+
+			const pkcsEncoding =
+				rsaConvertEl.current?.getEncoding() || RsaPkiEncoding.PKCS8_PEM;
 			const privateKeyBytes = await invoke<Uint8Array>("generate_rsa", {
 				keySize: keySize,
-				format: format.value,
+				...PkcsEncodings[pkcsEncoding],
 			});
-			const publicKeyBytes = await _derivePublicKey(privateKeyBytes);
 
+			const publicKeyBytes = await _derivePublicKey(privateKeyBytes);
 			const [publicKey, privateKey] = await Promise.all([
 				textCodecor.encode(encoding, publicKeyBytes),
 				textCodecor.encode(encoding, privateKeyBytes),
@@ -233,6 +225,8 @@ const RsaEncryption = () => {
 				inputCodecEl.current?.getEncoding() || TextEncoding.UTF8,
 				parameters.input || ""
 			);
+			const pkcsEncoding =
+				rsaConvertEl.current?.getEncoding() || RsaPkiEncoding.PKCS8_PEM;
 			let output;
 			if (operation === "encrypt") {
 				const key = await textCodecor.decode(
@@ -244,8 +238,8 @@ const RsaEncryption = () => {
 					data: {
 						...parameters,
 						input,
-						format: format.value,
 						key: key,
+						...PkcsEncodings[pkcsEncoding],
 					},
 				});
 			} else {
@@ -258,8 +252,8 @@ const RsaEncryption = () => {
 					data: {
 						...parameters,
 						input,
-						format: format.value,
 						key: key,
+						...PkcsEncodings[pkcsEncoding],
 					},
 				});
 			}
@@ -269,40 +263,6 @@ const RsaEncryption = () => {
 					outputCodecEl.current?.getEncoding() || TextEncoding.Base64,
 					output
 				),
-			});
-		} catch (err) {
-			console.log(err);
-		}
-	};
-
-	const encodingChange = async (to: Format) => {
-		try {
-			const encoding = keyCodecEl.current?.getEncoding() || TextEncoding.Base64;
-			let { privateKey: privateKeyStr, publicKey: publicKeyStr } =
-				await form.validateFields(["privateKey", "publicKey"]);
-
-			const [privateKey, publicKey] = await Promise.all([
-				textCodecor.decode(encoding, privateKeyStr),
-				textCodecor.decode(encoding, publicKeyStr),
-			]);
-
-			const [privateKeyBytes, publicKeyByte] = await invoke<Array<Uint8Array>>(
-				"transfer_rsa_key",
-				{
-					privateKey,
-					publicKey,
-					to,
-					from: format.value,
-				}
-			);
-			[privateKeyStr, publicKeyStr] = await Promise.all([
-				textCodecor.encode(encoding, privateKeyBytes),
-				textCodecor.encode(encoding, publicKeyByte),
-			]);
-			setFormat({ value: to });
-			form.setFieldsValue({
-				privateKey: privateKeyStr,
-				publicKey: publicKeyStr,
 			});
 		} catch (err) {
 			console.log(err);
@@ -345,12 +305,10 @@ const RsaEncryption = () => {
 					<TextRadioCodec
 						codecor={textCodecor}
 						ref={inputCodecEl}
-						props={{
-							size: size,
-							defaultValue: TextEncoding.UTF8,
-						}}
-						setInputs={(input: Record<string, string>) =>
-							form.setFieldsValue(input)
+						size={size}
+						defaultValue={TextEncoding.UTF8}
+						setInputs={(inputs: Record<string, string>) =>
+							form.setFieldsValue(inputs)
 						}
 						getInputs={() => form.getFieldsValue(["input"])}
 					/>
@@ -435,20 +393,19 @@ const RsaEncryption = () => {
 							vertical
 							style={{ height: keyHeight }}
 						>
-							<Form.Item
-								noStyle
-								help={format.errorMsg}
-								validateStatus={format.validateStatus}
-							>
-								<Select
-									value={format.value}
-									onChange={encodingChange}
+							<Form.Item noStyle name="encoding">
+								<RsaSelectConvert
+									converter={rsaConverter}
 									disabled={generating}
 									style={{
 										minWidth: keyButtonWidth,
 										minHeight: keyButtonHeight,
 									}}
-									options={formats}
+									getInputs={() =>
+										form.getFieldsValue(["privateKey", "publicKey"])
+									}
+									setInputs={form.setFieldsValue}
+									ref={rsaConvertEl}
 								/>
 							</Form.Item>
 							<TextSelectCodec
@@ -458,14 +415,12 @@ const RsaEncryption = () => {
 									form.getFieldsValue(["privateKey", "publicKey"])
 								}
 								setInputs={form.setFieldsValue}
-								props={{
-									disabled: generating,
-									style: {
-										minWidth: keyButtonWidth,
-										minHeight: keyButtonHeight,
-									},
-									defaultValue: TextEncoding.UTF8,
+								disabled={generating}
+								style={{
+									minWidth: keyButtonWidth,
+									minHeight: keyButtonHeight,
 								}}
+								defaultValue={TextEncoding.UTF8}
 							/>
 							<Button
 								loading={generating}
@@ -526,13 +481,9 @@ const RsaEncryption = () => {
 					<TextRadioCodec
 						codecor={textCodecor}
 						ref={outputCodecEl}
-						props={{
-							size: size,
-							defaultValue: TextEncoding.Base64,
-						}}
-						setInputs={(inputs: Record<string, string>) =>
-							form.setFieldsValue(inputs)
-						}
+						size={size}
+						defaultValue={TextEncoding.Base64}
+						setInputs={form.setFieldsValue}
 						getInputs={() => form.getFieldsValue(["output"])}
 					/>
 				</Flex>

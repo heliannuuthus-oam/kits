@@ -169,12 +169,10 @@ const EciesEncryption = () => {
 					<TextRadioCodec
 						codecor={textCodecor}
 						ref={inputCodecEl}
-						props={{
-							size: size,
-							defaultValue: TextEncoding.UTF8,
-						}}
-						setInputs={(input: Record<string, string>) =>
-							form.setFieldsValue(input)
+						size={size}
+						defaultValue={TextEncoding.UTF8}
+						setInputs={(inputs: Record<string, string>) =>
+							form.setFieldsValue(inputs)
 						}
 						getInputs={() => form.getFieldsValue(["input"])}
 					/>
@@ -213,12 +211,10 @@ const EciesEncryption = () => {
 							<Form.Item noStyle>
 								<EccSelectConvert
 									converter={eccConverter}
-									props={{
-										disabled: generating,
-										style: {
-											minWidth: keyButtonWidth,
-											minHeight: keyButtonHeight,
-										},
+									disabled={generating}
+									style={{
+										minWidth: keyButtonWidth,
+										minHeight: keyButtonHeight,
 									}}
 									getInputs={() =>
 										form.getFieldsValue(["privateKey", "publicKey"])
@@ -239,14 +235,12 @@ const EciesEncryption = () => {
 									pkiKeyCodecEl.current?.setTextEncoding(value);
 								}}
 								setInputs={form.setFieldsValue}
-								props={{
-									disabled: generating,
-									style: {
-										minWidth: keyButtonWidth,
-										minHeight: keyButtonHeight,
-									},
-									defaultValue: TextEncoding.UTF8,
+								disabled={generating}
+								style={{
+									minWidth: keyButtonWidth,
+									minHeight: keyButtonHeight,
 								}}
+								defaultValue={TextEncoding.UTF8}
 							/>
 							<Button
 								loading={generating}
@@ -310,10 +304,8 @@ const EciesEncryption = () => {
 					<TextRadioCodec
 						codecor={textCodecor}
 						ref={outputCodecEl}
-						props={{
-							size: size,
-							defaultValue: TextEncoding.Base64,
-						}}
+						size={size}
+						defaultValue={TextEncoding.Base64}
 						setInputs={(inputs: Record<string, string>) =>
 							form.setFieldsValue(inputs)
 						}

@@ -11,21 +11,19 @@ export type CodecRef<T> = {
 	setEncoding: (encoding: T) => void;
 };
 
-export type CodecRadioProps<T> = {
-	props: RadioGroupProps;
+export interface CodecRadioProps<T> extends RadioGroupProps {
 	codecor: Codecor<T>;
 	callback?: (value: T) => void;
 	getInputs: () => Record<string, string>;
-	setInputs: (input: Record<string, string>) => void;
-};
+	setInputs: (inputs: Record<string, string>) => void;
+}
 
-export type CodecSelectProps<T> = {
-	props: SelectProps;
+export interface CodecSelectProps<T> extends SelectProps {
 	codecor: Codecor<T>;
 	callback?: (value: T) => void;
 	getInputs: () => Record<string, string>;
-	setInputs: (input: Record<string, string>) => void;
-};
+	setInputs: (inputs: Record<string, string>) => void;
+}
 
 export enum TextEncoding {
 	Base64 = "base64",

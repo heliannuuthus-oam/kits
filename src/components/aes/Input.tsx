@@ -341,21 +341,8 @@ const AesInput = ({
 						<TextRadioCodec
 							codecor={textCodecor}
 							ref={codecEl}
-							props={{
-								size: size,
-								defaultValue: TextEncoding.UTF8,
-								options: [
-									{
-										value: TextEncoding.UTF8,
-										label: <span>utf-8</span>,
-									},
-									{
-										value: TextEncoding.Base64,
-										label: <span>base64</span>,
-									},
-									{ value: TextEncoding.Hex, label: <span>hex</span> },
-								],
-							}}
+							size={size}
+							defaultValue={TextEncoding.UTF8}
 							setInputs={(inputs: Record<string, string>) =>
 								form.setFieldsValue({ ...inputs })
 							}
