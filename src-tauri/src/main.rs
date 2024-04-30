@@ -33,10 +33,13 @@ fn main() -> Result<()> {
             // key generator
             crypto::aes::generate_aes,
             crypto::aes::generate_iv,
-            crypto::curve_25519::generate_ed25519,
-            crypto::ecc::generate_ecc,
             crypto::rsa::generate_rsa,
             crypto::rsa::derive_rsa,
+            crypto::ecc::generate_ecc,
+            crypto::ecc::derive_ecc,
+            crypto::ecc::ecies,
+            crypto::curve_25519::generate_curve_25519_key,
+            crypto::curve_25519::curve_25519_ecies,
             // encrytion
             crypto::aes::encrypt_aes,
             crypto::aes::decrypt_aes,
@@ -50,7 +53,9 @@ fn main() -> Result<()> {
             helper::codec::hex_encode,
             helper::codec::hex_decode,
             helper::codec::string_encode,
-            helper::codec::string_decode
+            helper::codec::string_decode,
+            helper::codec::pkcs8_sec1_transfer,
+            helper::codec::pkcs8_pkcs1_transfer,
         ])
         .run(tauri::generate_context!())
         .context("error while running tauri application")?;

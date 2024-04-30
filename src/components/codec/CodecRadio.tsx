@@ -31,6 +31,7 @@ function CodecRadioInner<T>(
 				inputs[key] = encoded;
 			}
 			props.setInputs(inputs);
+			props.callback && props.callback(event.target.value);
 			setEncoding(event.target.value);
 		} catch (err: unknown) {
 			openNotification(encoding, event.target.value, err as string);

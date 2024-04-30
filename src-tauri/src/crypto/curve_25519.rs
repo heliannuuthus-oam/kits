@@ -20,14 +20,6 @@ use crate::{
 };
 
 #[tauri::command]
-pub fn generate_ed25519() -> Result<String> {
-    let mut rng = rand::thread_rng();
-    Ok(ed25519_dalek::SigningKey::generate(&mut rng)
-        .to_pkcs8_pem(base64ct::LineEnding::LF)
-        .context("export ed25519 key failed")?
-        .to_string())
-}
-
 pub(crate) fn generate_curve_25519_key(
     format: EccKeyFormat,
     encoding: KeyEncoding,
@@ -46,7 +38,8 @@ pub(crate) fn generate_curve_25519_key(
     ))
 }
 
-pub(crate) fn curve_25519_ecies_inner(
+#[tauri::command]
+pub(crate) fn curve_25519_ecies(
     input: &[u8],
     key: &[u8],
     format: EccKeyFormat,
@@ -134,7 +127,7 @@ pub(crate) fn curve_25519_ecies_inner(
     Ok(ByteBuf::from(result))
 }
 
-pub(crate) fn import_curve_25519_private_key(
+fn import_curve_25519_private_key(
     input: &[u8],
     format: EccKeyFormat,
     encoding: KeyEncoding,
@@ -181,7 +174,7 @@ pub(crate) fn import_curve_25519_private_key(
     })
 }
 
-pub(crate) fn import_curve_25519_public_key(
+fn import_curve_25519_public_key(
     input: &[u8],
     from: KeyEncoding,
 ) -> Result<ed25519_dalek::VerifyingKey> {
@@ -199,7 +192,7 @@ pub(crate) fn import_curve_25519_public_key(
     })
 }
 
-pub(crate) fn export_curve_25519_private_key(
+fn export_curve_25519_private_key(
     secret_key: &ed25519_dalek::SigningKey,
     format: EccKeyFormat,
     codec: KeyEncoding,
@@ -207,7 +200,7 @@ pub(crate) fn export_curve_25519_private_key(
     let transfer = |secret_key: &ed25519_dalek::SigningKey| {
         let private_key_bytes = Zeroizing::new(secret_key.to_bytes());
         let public_key_bytes = secret_key.verifying_key();
-        let cc = Zeroizing::new(
+        Ok(Zeroizing::new(
             sec1::EcPrivateKey {
                 private_key: private_key_bytes.as_ref(),
                 parameters: None,
@@ -215,8 +208,7 @@ pub(crate) fn export_curve_25519_private_key(
             }
             .to_der()
             .context("curve_25519 to sec1 private key der failed")?,
-        );
-        Ok(cc)
+        ))
     };
 
     Ok(match format {
