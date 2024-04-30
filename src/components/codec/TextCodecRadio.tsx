@@ -7,10 +7,10 @@ export const TextRadioCodec = forwardRef<TextCodecRef, TextCodecRadioProps>(
 	(
 		{
 			codecor,
-			getInputs: getInput,
-			setInputs: setInput,
-			props,
+			getInputs,
+			setInputs,
 			callback = (_: TextEncoding) => {},
+			...props
 		},
 		ref
 	) => {
@@ -19,17 +19,15 @@ export const TextRadioCodec = forwardRef<TextCodecRef, TextCodecRadioProps>(
 				ref={ref}
 				callback={callback}
 				codecor={codecor}
-				getInputs={getInput}
-				setInputs={setInput}
-				props={{
-					defaultValue: TextEncoding.Base64,
-					options: [
-						{ value: TextEncoding.UTF8, label: <span>utf-8</span> },
-						{ value: TextEncoding.Base64, label: <span>base64</span> },
-						{ value: TextEncoding.Hex, label: <span>hex</span> },
-					],
-					...props,
-				}}
+				getInputs={getInputs}
+				setInputs={setInputs}
+				defaultValue={TextEncoding.Base64}
+				options={[
+					{ value: TextEncoding.UTF8, label: <span>utf-8</span> },
+					{ value: TextEncoding.Base64, label: <span>base64</span> },
+					{ value: TextEncoding.Hex, label: <span>hex</span> },
+				]}
+				{...props}
 			/>
 		);
 	}

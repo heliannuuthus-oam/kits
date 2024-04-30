@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api";
 import { RadioGroupProps, SelectProps } from "antd";
 import { TextCodecor, TextEncoding } from "../codec/codec";
 
-export interface Converter<T> {
+export interface Converter<T extends PkcsEncoding> {
 	textCodecor: TextCodecor;
 	convert: (
 		input: Uint8Array,
@@ -12,26 +12,26 @@ export interface Converter<T> {
 	) => Promise<Uint8Array>;
 }
 
-export type ConvertRef<T> = {
+export type ConvertRef<T extends PkcsEncoding> = {
 	getEncoding: () => T;
 	setEncoding: (encoding: T) => void;
 	getTextEncoding: () => TextEncoding;
 	setTextEncoding: (encoding: TextEncoding) => void;
 };
 
-export type ConvertRadioProps<T> = {
-	props: RadioGroupProps;
+export interface ConvertRadioProps<T extends PkcsEncoding>
+	extends RadioGroupProps {
 	converter: Converter<T>;
 	getInputs: () => Record<string, string>;
 	setInputs: (input: Record<string, string>) => void;
-};
+}
 
-export type ConvertSelectProps<T> = {
-	props: SelectProps;
+export interface ConvertSelectProps<T extends PkcsEncoding>
+	extends SelectProps {
 	converter: Converter<T>;
 	getInputs: () => Record<string, string>;
-	setInputs: (input: Record<string, string>) => void;
-};
+	setInputs: (inputs: Record<string, string>) => void;
+}
 
 export enum CurveName {
 	NIST_P256 = "nistp256",
@@ -88,10 +88,9 @@ export const PkcsEncodings: Record<PkcsEncoding, PkcsEncodingProps> = {
 export const RsaPkiEncoding = { ...Pkcs1Encoding, ...Pkcs8Encoding };
 export type RsaPkiEncoding = typeof RsaPkiEncoding;
 
-TextCodecor;
-type PkcsEncoding = Pkcs8Encoding | Sec1Encoding | Pkcs1Encoding;
-type RsaEncoding = Pkcs8Encoding | Pkcs1Encoding;
-type EccEncoding = Pkcs8Encoding | Sec1Encoding;
+export type PkcsEncoding = Pkcs8Encoding | Sec1Encoding | Pkcs1Encoding;
+export type RsaEncoding = Pkcs8Encoding | Pkcs1Encoding;
+export type EccEncoding = Pkcs8Encoding | Sec1Encoding;
 
 export class RsaConverter implements Converter<RsaEncoding> {
 	textCodecor: TextCodecor = new TextCodecor();
@@ -127,7 +126,6 @@ export class RsaConverter implements Converter<RsaEncoding> {
 					`unsupported pkcs: ${fromData.pkcs} encoding: ${fromData.encoding} convert pkcs: ${toData.pkcs} encoding: ${toData.encoding}`
 				);
 		}
-		TextCodecor;
 		return output;
 	}
 }

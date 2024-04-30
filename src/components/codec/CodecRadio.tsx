@@ -6,7 +6,7 @@ function CodecRadioInner<T>(
 	props: CodecRadioProps<T>,
 	ref: ForwardedRef<CodecRef<T>>
 ) {
-	const [encoding, setEncoding] = useState<T>(props.props.defaultValue);
+	const [encoding, setEncoding] = useState<T>(props.defaultValue);
 	const [api, contextHolder] = notification.useNotification({
 		stack: { threshold: 1 },
 	});
@@ -31,7 +31,7 @@ function CodecRadioInner<T>(
 				inputs[key] = encoded;
 			}
 			props.setInputs(inputs);
-			props.callback && props.callback(event.target.value);
+			props.callback?.(event.target.value);
 			setEncoding(event.target.value);
 		} catch (err: unknown) {
 			openNotification(encoding, event.target.value, err as string);
@@ -53,7 +53,7 @@ function CodecRadioInner<T>(
 			<Radio.Group
 				onChange={changeEncoding}
 				value={encoding}
-				{...props.props}
+				{...props}
 				optionType="button"
 			/>
 		</>

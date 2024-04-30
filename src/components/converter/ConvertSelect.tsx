@@ -1,41 +1,73 @@
-import { Select } from "antd";
+import { Select, message } from "antd";
 import { ForwardedRef, forwardRef, useImperativeHandle, useState } from "react";
-import { ConvertRef } from "./converter";
+import {
+	ConvertRef,
+	Pkcs1Encoding,
+	Pkcs8Encoding,
+	PkcsEncoding,
+	PkcsEncodings,
+	Sec1Encoding,
+} from "./converter";
 import { ConvertSelectProps } from "./converter";
 import { TextEncoding } from "../codec/codec";
 
-function ConvertSelectInner<T>(
-	props: ConvertSelectProps<T>,
+function ConvertSelectInner<T extends PkcsEncoding>(
+	{ converter, getInputs, setInputs, ...props }: ConvertSelectProps<T>,
 	ref: ForwardedRef<ConvertRef<T>>
 ) {
-	const [encoding, setEncoding] = useState<T>(props.props.defaultValue);
+	const [encoding, setEncoding] = useState<T>(props.defaultValue);
 	const [textEncoding, setTextEncoding] = useState<TextEncoding>(
 		TextEncoding.UTF8
 	);
-
+	const [messageApi, contextHolder] = message.useMessage({
+		maxCount: 1,
+	});
+	const ders = [
+		Pkcs1Encoding.PKCS1_DER,
+		Pkcs8Encoding.PKCS8_DER,
+		Sec1Encoding.SEC1_DER,
+	];
 	const selectEncoding = async (value: T) => {
-		const inputs = props.getInputs();
+		console.log(textEncoding, value, encoding);
+		if (textEncoding === TextEncoding.UTF8) {
+			const pkcs = ders.includes(encoding)
+				? PkcsEncodings[encoding]
+				: ders.includes(value)
+					? PkcsEncodings[value]
+					: null;
+			if (pkcs) {
+				messageApi.warning({
+					content: (
+						<span>
+							Incompatible text encodings(
+							<span style={{ fontWeight: 700 }}>{textEncoding}</span>) and key
+							formats(
+							{<span style={{ fontWeight: 700 }}>{pkcs.encoding}</span>})
+						</span>
+					),
+					duration: 5,
+				});
+				return;
+			}
+		}
+
+		const inputs = getInputs();
 		try {
 			for (const [key, inputStr] of Object.entries(inputs)) {
-				console.log(inputStr);
-				const input = await props.converter.textCodecor.decode(
+				const input = await converter.textCodecor.decode(
 					textEncoding,
 					inputStr
 				);
-				console.log(input);
-
-				const output = await props.converter.convert(
+				const output = await converter.convert(
 					input,
 					encoding,
 					value,
 					key === "publicKey"
 				);
-				inputs[key] = await props.converter.textCodecor.encode(
-					textEncoding,
-					output
-				);
+				inputs[key] = await converter.textCodecor.encode(textEncoding, output);
 			}
-			props.setInputs(inputs);
+			setInputs(inputs);
+
 			setEncoding(value);
 		} catch (err) {
 			console.log(err);
@@ -57,9 +89,16 @@ function ConvertSelectInner<T>(
 		},
 	}));
 
-	return <Select onSelect={selectEncoding} value={encoding} {...props.props} />;
+	return (
+		<>
+			{contextHolder}
+			<Select onSelect={selectEncoding} value={encoding} {...props} />
+		</>
+	);
 }
 
-export const ConvertSelect = forwardRef(ConvertSelectInner) as <T>(
+export const ConvertSelect = forwardRef(ConvertSelectInner) as <
+	T extends PkcsEncoding,
+>(
 	props: ConvertSelectProps<T> & { ref?: React.ForwardedRef<ConvertRef<T>> }
 ) => ReturnType<typeof ConvertSelectInner>;

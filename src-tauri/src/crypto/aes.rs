@@ -105,14 +105,14 @@ fn encrypt_or_decrypt_aes_inner<C>(
     aad: Option<Vec<u8>>,
     for_encryption: bool,
 ) -> Result<Vec<u8>>
-    where
-        C: BlockDecryptMut
+where
+    C: BlockDecryptMut
         + BlockEncryptMut
         + BlockCipher
         + BlockDecrypt
         + BlockEncrypt
         + KeyInit
-        + BlockSizeUser<BlockSize=typenum::U16>,
+        + BlockSizeUser<BlockSize = typenum::U16>,
 {
     match mode {
         EncryptionMode::Ecb => {
@@ -131,7 +131,7 @@ fn encrypt_or_decrypt_aes_inner<C>(
                         key,
                         iv.unwrap().as_ref(),
                     )
-                        .context("construct aes_cbc_encryptor failed")?,
+                    .context("construct aes_cbc_encryptor failed")?,
                     padding,
                     plaintext,
                 )
@@ -141,7 +141,7 @@ fn encrypt_or_decrypt_aes_inner<C>(
                         key,
                         iv.unwrap().as_ref(),
                     )
-                        .context("construct aes_ecb_decryptor failed")?,
+                    .context("construct aes_ecb_decryptor failed")?,
                     padding,
                     plaintext,
                 )
@@ -176,12 +176,12 @@ fn encrypt_aes_inner_in<C>(
     padding: AesEncryptionPadding,
     plaintext: &[u8],
 ) -> Result<Vec<u8>>
-    where
-        C: BlockEncryptMut,
+where
+    C: BlockEncryptMut,
 {
     let pt_len = plaintext.len();
     let mut buf = vec![0u8; 16 * (pt_len / 16 + 1)];
-    buf[..pt_len].copy_from_slice(plaintext);
+    buf[.. pt_len].copy_from_slice(plaintext);
     let ciphertext = match padding {
         AesEncryptionPadding::Pkcs7Padding => {
             c.encrypt_padded_b2b_mut::<Pkcs7>(plaintext, &mut buf)
@@ -190,7 +190,7 @@ fn encrypt_aes_inner_in<C>(
             c.encrypt_padded_b2b_mut::<NoPadding>(plaintext, &mut buf)
         }
     }
-        .context("aes encrypt failed")?;
+    .context("aes encrypt failed")?;
     Ok(ciphertext.to_vec())
 }
 
@@ -199,12 +199,12 @@ fn decrypt_aes_inner_in<C>(
     padding: AesEncryptionPadding,
     ciphertext: &[u8],
 ) -> Result<Vec<u8>>
-    where
-        C: BlockDecryptMut,
+where
+    C: BlockDecryptMut,
 {
     let pt_len = ciphertext.len();
     let mut buf = vec![0u8; 16 * (pt_len / 16 + 1)];
-    buf[..pt_len].copy_from_slice(ciphertext);
+    buf[.. pt_len].copy_from_slice(ciphertext);
     let ciphertext = match padding {
         AesEncryptionPadding::Pkcs7Padding => {
             c.decrypt_padded_b2b_mut::<Pkcs7>(ciphertext, &mut buf)
@@ -213,7 +213,7 @@ fn decrypt_aes_inner_in<C>(
             c.decrypt_padded_b2b_mut::<NoPadding>(ciphertext, &mut buf)
         }
     }
-        .context("aes decrypt failed")?;
+    .context("aes decrypt failed")?;
     Ok(ciphertext.to_vec())
 }
 
@@ -240,7 +240,7 @@ mod test {
                 None,
                 true,
             )
-                .unwrap();
+            .unwrap();
             assert_eq!(
                 plaintext.to_vec(),
                 encrypt_or_decrypt_aes(
@@ -252,7 +252,7 @@ mod test {
                     None,
                     false,
                 )
-                    .unwrap()
+                .unwrap()
             )
         }
     }

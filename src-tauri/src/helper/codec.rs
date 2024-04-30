@@ -12,10 +12,11 @@ use super::{
 use crate::helper::enums::PkcsEncoding;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
-pub struct PkcsGoods {
-    pkcs: PkcsEncoding,
-    encoding: KeyEncoding,
+pub struct PkcsDto {
+   pub pkcs: PkcsEncoding,
+    pub encoding: KeyEncoding,
 }
+
 #[tauri::command]
 pub fn base64_encode(
     input: ByteBuf,
@@ -104,8 +105,8 @@ pub fn string_decode(input: &str) -> Result<ByteBuf> {
 pub fn pkcs8_sec1_transfer(
     curve_name: EccCurveName,
     input: ByteBuf,
-    from: PkcsGoods,
-    to: PkcsGoods,
+    from: PkcsDto,
+    to: PkcsDto,
     is_public: bool,
 ) -> Result<ByteBuf> {
     info!(
@@ -146,8 +147,8 @@ pub fn pkcs8_sec1_transfer(
 fn pkcs8_sec1_transfer_inner<C>(
     input: &[u8],
     is_public: bool,
-    from: PkcsGoods,
-    to: PkcsGoods,
+    from: PkcsDto,
+    to: PkcsDto,
 ) -> Result<Vec<u8>>
 where
     C: pkcs8::AssociatedOid + elliptic_curve::CurveArithmetic,
@@ -233,8 +234,8 @@ where
 #[tauri::command]
 pub fn pkcs8_pkcs1_transfer(
     input: ByteBuf,
-    from: PkcsGoods,
-    to: PkcsGoods,
+    from: PkcsDto,
+    to: PkcsDto,
     is_public: bool,
 ) -> Result<ByteBuf> {
     Ok(ByteBuf::from(pkcs8_pkcs1_transfer_inner(
@@ -244,8 +245,8 @@ pub fn pkcs8_pkcs1_transfer(
 
 fn pkcs8_pkcs1_transfer_inner(
     input: &[u8],
-    from: PkcsGoods,
-    to: PkcsGoods,
+    from: PkcsDto,
+    to: PkcsDto,
     is_public: bool,
 ) -> Result<Vec<u8>> {
     match from.pkcs {

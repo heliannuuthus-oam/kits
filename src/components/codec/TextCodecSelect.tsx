@@ -8,8 +8,8 @@ export const TextSelectCodec = forwardRef<TextCodecRef, TextCodecSelectProps>(
 			codecor,
 			getInputs,
 			setInputs,
-			props,
 			callback = (_: TextEncoding) => {},
+			...props
 		},
 		ref
 	) => {
@@ -20,15 +20,13 @@ export const TextSelectCodec = forwardRef<TextCodecRef, TextCodecSelectProps>(
 				callback={callback}
 				getInputs={getInputs}
 				setInputs={setInputs}
-				props={{
-					defaultValue: TextEncoding.Base64,
-					options: [
-						{ value: TextEncoding.UTF8, label: <span>utf-8</span> },
-						{ value: TextEncoding.Base64, label: <span>base64</span> },
-						{ value: TextEncoding.Hex, label: <span>hex</span> },
-					],
-					...props,
-				}}
+				defaultValue={TextEncoding.Base64}
+				options={[
+					{ value: TextEncoding.UTF8, label: <span>utf-8</span> },
+					{ value: TextEncoding.Base64, label: <span>base64</span> },
+					{ value: TextEncoding.Hex, label: <span>hex</span> },
+				]}
+				{...props}
 			/>
 		);
 	}
