@@ -51,7 +51,8 @@ const AesOutput = forwardRef<AesOutputRef, AesOutputProps>((_props, ref) => {
 					<TextRadioCodec
 						ref={codecEl}
 						codecor={textCodecor}
-						props={{ size: size, defaultValue: TextEncoding.Base64 }}
+						size={size}
+						defaultValue={TextEncoding.Base64}
 						setInputs={(inputs) => {
 							setOutput(inputs["output"]);
 						}}
