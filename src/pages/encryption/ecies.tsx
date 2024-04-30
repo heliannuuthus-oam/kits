@@ -94,14 +94,20 @@ const EciesEncryption = () => {
 		}
 		const pkcs8Encoding =
 			pkiKeyCodecEl.current?.getEncoding() || Pkcs8Encoding.PKCS8_PEM;
-		return await invoke<Uint8Array>("derive_rsa", {
-			key: key,
-			format: pkcs8Encoding,
+
+		const { pkcs, encoding } = PkcsEncodings[pkcs8Encoding];
+
+		return await invoke<Uint8Array>("derive_ecc", {
+			curveName: curveName,
+			input: key,
+			pkcs,
+			encoding,
 		});
 	};
 
 	const derivePublicKey = async () => {
 		try {
+			setGenerating(true);
 			const publicKeyBytes = await _derivePublicKey(null);
 			const encoding = keyCodecEl.current?.getEncoding() || TextEncoding.Base64;
 			const publicKey = await textCodecor.encode(encoding, publicKeyBytes);
@@ -109,7 +115,9 @@ const EciesEncryption = () => {
 		} catch (error) {
 			console.log(error);
 		}
+		setGenerating(false);
 	};
+
 	const generatePrivateKey = async () => {
 		setGenerating(true);
 		try {

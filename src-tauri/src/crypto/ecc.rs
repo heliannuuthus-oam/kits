@@ -1,11 +1,9 @@
 use anyhow::Context;
-use base64ct::Encoding;
 use elliptic_curve::AffinePoint;
 use p256::NistP256;
 use pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey};
 use serde_bytes::ByteBuf;
 use spki::DecodePublicKey;
-use tracing::debug;
 
 use crate::{
     crypto::{self, kdf::SALT},
@@ -37,6 +35,45 @@ pub fn generate_ecc(
             generate_ecc_key::<k256::Secp256k1>(pkcs, encoding)
         }
     }
+}
+
+#[tauri::command]
+pub fn derive_ecc(
+    curve_name: EccCurveName,
+    input: ByteBuf,
+    pkcs: PkcsEncoding,
+    encoding: KeyEncoding,
+) -> Result<ByteBuf> {
+    Ok(ByteBuf::from(match curve_name {
+        EccCurveName::NistP256 => {
+            derive_ecc_inner::<NistP256>(&input, pkcs, encoding)?
+        }
+        EccCurveName::NistP384 => {
+            derive_ecc_inner::<p384::NistP384>(&input, pkcs, encoding)?
+        }
+        EccCurveName::NistP521 => {
+            derive_ecc_inner::<p521::NistP521>(&input, pkcs, encoding)?
+        }
+        EccCurveName::Secp256k1 => {
+            derive_ecc_inner::<k256::Secp256k1>(&input, pkcs, encoding)?
+        }
+    }))
+}
+
+pub fn derive_ecc_inner<C>(
+    input: &[u8],
+    pkcs: PkcsEncoding,
+    encoding: KeyEncoding,
+) -> Result<Vec<u8>>
+where
+    C: elliptic_curve::Curve,
+    C: elliptic_curve::CurveArithmetic + pkcs8::AssociatedOid,
+    AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
+        + elliptic_curve::sec1::ToEncodedPoint<C>,
+    elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
+{
+    let ecc_private_key = import_ecc_private_key::<C>(input, pkcs, encoding)?;
+    export_ecc_public_key(ecc_private_key.public_key(), encoding)
 }
 
 #[tauri::command]
@@ -125,14 +162,7 @@ where
             SALT.as_bytes(),
             210_000,
         );
-
         let (secret, iv) = pkf_key.split_at(32);
-        debug!(
-            "encryption secret: {}",
-            base64ct::Base64::encode_string(secret)
-        );
-        debug!("decryption iv: {}", base64ct::Base64::encode_string(iv));
-
         let encrypted = crypto::aes::encrypt_or_decrypt_aes(
             EncryptionMode::Gcm,
             secret,
@@ -142,10 +172,6 @@ where
             None,
             for_encryption,
         )?;
-        debug!(
-            "cipher text: {}",
-            base64ct::Base64::encode_string(&encrypted)
-        );
         result.extend_from_slice(&encrypted);
         result
     } else {
@@ -173,12 +199,6 @@ where
         );
 
         let (secret, iv) = pkf_key.split_at(32);
-        debug!(
-            "decryption secret: {}",
-            base64ct::Base64::encode_string(secret)
-        );
-        debug!("decryption iv: {}", base64ct::Base64::encode_string(iv));
-        debug!("cipher text: {}", base64ct::Base64::encode_string(input));
         crypto::aes::encrypt_or_decrypt_aes(
             EncryptionMode::Gcm,
             secret,
@@ -217,7 +237,7 @@ where
 
 fn import_ecc_private_key<C>(
     input: &[u8],
-    pkcs_encoding: PkcsEncoding,
+    pkcs: PkcsEncoding,
     encoding: KeyEncoding,
 ) -> Result<elliptic_curve::SecretKey<C>>
 where
@@ -227,7 +247,7 @@ where
         + elliptic_curve::sec1::ToEncodedPoint<C>,
     elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
 {
-    Ok(match (pkcs_encoding, encoding) {
+    Ok(match (pkcs, encoding) {
         (PkcsEncoding::Pkcs8, KeyEncoding::Pem) => {
             let public_key_str = String::from_utf8(input.to_vec())
                 .context("informal ecc pkcs8 private key")?;
@@ -330,7 +350,7 @@ where
 
 fn export_ecc_public_key<C>(
     public_key: elliptic_curve::PublicKey<C>,
-    codec: KeyEncoding,
+    encoding: KeyEncoding,
 ) -> Result<Vec<u8>>
 where
     C: elliptic_curve::Curve,
@@ -340,7 +360,7 @@ where
     elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
     elliptic_curve::PublicKey<C>: EncodePublicKey,
 {
-    Ok(match codec {
+    Ok(match encoding {
         KeyEncoding::Pem => public_key
             .to_public_key_pem(base64ct::LineEnding::LF)
             .context("init pem private key failed")?

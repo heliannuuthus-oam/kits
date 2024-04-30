@@ -36,6 +36,7 @@ fn main() -> Result<()> {
             crypto::rsa::generate_rsa,
             crypto::rsa::derive_rsa,
             crypto::ecc::generate_ecc,
+            crypto::ecc::derive_ecc,
             crypto::ecc::ecies,
             crypto::curve_25519::generate_curve_25519_key,
             crypto::curve_25519::curve_25519_ecies,
