@@ -49,20 +49,18 @@ export const Sider = ({ ...props }: SiderProps) => {
 	const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
 	const [openKeys, setOpenKeys] = useState<string[]>([]);
 	const { pathname } = useLocation();
+
 	useEffect(() => {
-		const leaf = pathname.lastIndexOf("/");
-		const parent = pathname.substring(
-			1,
+		console.log(menuItems);
+		const path = pathname.substring(1);
+		const leaf = path.lastIndexOf("/");
+		const parent = path.substring(
+			0,
 			leaf === -1 || leaf === 0 ? pathname.length : leaf
 		);
 		setOpenKeys([parent]);
-		setSelectedKeys([location.pathname.substring(1)]);
+		setSelectedKeys([path]);
 	}, [pathname]);
-
-	const onChange = ({ keyPath }: { keyPath: string[] }) => {
-		setOpenKeys([keyPath[-1]]);
-		setSelectedKeys([keyPath[-2]]);
-	};
 
 	return (
 		<ConfigProvider
@@ -86,7 +84,9 @@ export const Sider = ({ ...props }: SiderProps) => {
 					selectedKeys={selectedKeys}
 					openKeys={openKeys}
 					items={menuItems}
-					onClick={onChange}
+					onOpenChange={(keys: string[]) => {
+						setOpenKeys(keys);
+					}}
 				/>
 			</AntdSider>
 		</ConfigProvider>
