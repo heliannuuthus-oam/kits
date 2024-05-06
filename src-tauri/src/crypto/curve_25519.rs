@@ -2,18 +2,17 @@ use anyhow::Context;
 use base64ct::Encoding;
 use der::{pem::PemLabel, Encode};
 use pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey};
-use serde_bytes::ByteBuf;
 use spki::DecodePublicKey;
 use tracing::debug;
 use zeroize::Zeroizing;
 
+use super::ecc::EciesDto;
 use crate::{
     crypto::{self, kdf::SALT},
     helper::{
         common::KeyTuple,
         enums::{
-            AesEncryptionPadding, EccKeyFormat, EciesEncryptionAlgorithm,
-            EncryptionMode, KeyEncoding,
+            AesEncryptionPadding, EncryptionMode, KeyFormat, Pkcs, TextEncoding,
         },
         errors::{Error, Result},
     },
@@ -21,38 +20,36 @@ use crate::{
 
 #[tauri::command]
 pub(crate) fn generate_curve_25519_key(
-    format: EccKeyFormat,
-    encoding: KeyEncoding,
+    pkcs: Pkcs,
+    format: KeyFormat,
+    encoding: TextEncoding,
 ) -> Result<KeyTuple> {
     let mut rng = rand::thread_rng();
     let secret_key = ed25519_dalek::SigningKey::generate(&mut rng);
 
     let private_key =
-        export_curve_25519_private_key(&secret_key, format, encoding)?;
+        export_curve_25519_private_key(&secret_key, pkcs, format)?;
     let public_secret_key = secret_key.verifying_key();
-    let public_key =
-        export_curve_25519_public_key(public_secret_key, encoding)?;
-    Ok(KeyTuple(
-        ByteBuf::from(private_key),
-        ByteBuf::from(public_key),
+    let public_key = export_curve_25519_public_key(public_secret_key, format)?;
+    Ok(KeyTuple::new(
+        encoding.encode(&private_key)?,
+        encoding.encode(&public_key)?,
     ))
 }
 
 #[tauri::command]
-pub(crate) fn curve_25519_ecies(
-    input: &[u8],
-    key: &[u8],
-    format: EccKeyFormat,
-    encoding: KeyEncoding,
-    _ea: EciesEncryptionAlgorithm,
-    for_encryption: bool,
-) -> Result<ByteBuf> {
+pub(crate) fn curve_25519_ecies(data: EciesDto) -> Result<String> {
     let rng = rand::thread_rng();
-    let result = if for_encryption {
+
+    let key_bytes = data.key_encoding.decode(&data.key)?;
+    let input = data.input_encoding.decode(&data.input)?;
+
+    let result = if data.for_encryption {
         let mut result = Vec::new();
         let receiver_secret_key =
             x25519_dalek::EphemeralSecret::random_from_rng(rng);
-        let verifying_key = import_curve_25519_public_key(key, encoding)?;
+        let verifying_key =
+            import_curve_25519_public_key(&key_bytes, data.key_format)?;
         let public_key = x25519_dalek::PublicKey::from(
             verifying_key.to_montgomery().to_bytes(),
         );
@@ -76,11 +73,11 @@ pub(crate) fn curve_25519_ecies(
         let encrypted = crypto::aes::encrypt_or_decrypt_aes(
             EncryptionMode::Gcm,
             secret,
-            input,
+            &input,
             AesEncryptionPadding::NoPadding,
             Some(iv.to_vec()),
             None,
-            for_encryption,
+            data.for_encryption,
         )?;
         result.extend_from_slice(&encrypted);
         result
@@ -97,8 +94,11 @@ pub(crate) fn curve_25519_ecies(
         let (receiver_secret_bytes, input) = input.split_at(32);
         let mut receiver_secret = [0; 32];
         receiver_secret.copy_from_slice(receiver_secret_bytes);
-        let signing_key =
-            import_curve_25519_private_key(key, format, encoding)?;
+        let signing_key = import_curve_25519_private_key(
+            &key_bytes,
+            data.pkcs,
+            data.key_format,
+        )?;
         let private_key =
             x25519_dalek::StaticSecret::from(signing_key.to_scalar_bytes());
         let public_key = x25519_dalek::PublicKey::from(receiver_secret);
@@ -121,33 +121,33 @@ pub(crate) fn curve_25519_ecies(
             AesEncryptionPadding::NoPadding,
             Some(iv.to_vec()),
             None,
-            for_encryption,
+            data.for_encryption,
         )?
     };
-    Ok(ByteBuf::from(result))
+    data.output_encoding.encode(&result)
 }
 
 fn import_curve_25519_private_key(
     input: &[u8],
-    format: EccKeyFormat,
-    encoding: KeyEncoding,
+    pkcs: Pkcs,
+    format: KeyFormat,
 ) -> Result<ed25519_dalek::SigningKey> {
     let transfer = |der_bytes| {
         sec1::EcPrivateKey::try_from(der_bytes).context("unprocessed error")
     };
 
-    Ok(match (format, encoding) {
-        (EccKeyFormat::BaseKeyFormat(_), KeyEncoding::Pem) => {
+    Ok(match (pkcs, format) {
+        (Pkcs::Pkcs8, KeyFormat::Pem) => {
             let private_key_str = String::from_utf8(input.to_vec())
                 .context("informal curve 25519 private key")?;
             ed25519_dalek::SigningKey::from_pkcs8_pem(&private_key_str)
                 .context("informal curve 25519 pkcs8 pem private key")?
         }
-        (EccKeyFormat::BaseKeyFormat(_), KeyEncoding::Der) => {
+        (Pkcs::Pkcs8, KeyFormat::Der) => {
             ed25519_dalek::SigningKey::from_pkcs8_der(input)
                 .context("informal ecc pkcs8 der private key")?
         }
-        (EccKeyFormat::Sec1, KeyEncoding::Pem) => {
+        (Pkcs::Sec1, KeyFormat::Pem) => {
             let private_key_str = String::from_utf8(input.to_vec())
                 .context("informal ecc pkcs8 private key")?;
 
@@ -165,27 +165,28 @@ fn import_curve_25519_private_key(
             private_key[.. 32].clone_from_slice(sec1_private_key.private_key);
             ed25519_dalek::SigningKey::from_bytes(&private_key)
         }
-        (EccKeyFormat::Sec1, KeyEncoding::Der) => {
+        (Pkcs::Sec1, KeyFormat::Der) => {
             let sec1_private_key = transfer(input)?;
             let mut private_key: ed25519_dalek::SecretKey = [0; 32];
             private_key[.. 32].clone_from_slice(sec1_private_key.private_key);
             ed25519_dalek::SigningKey::from_bytes(&private_key)
         }
+        _ => return Err(Error::Unsupported("unsuppoted ecc tag".to_string())),
     })
 }
 
 fn import_curve_25519_public_key(
     input: &[u8],
-    from: KeyEncoding,
+    format: KeyFormat,
 ) -> Result<ed25519_dalek::VerifyingKey> {
-    Ok(match from {
-        KeyEncoding::Pem => {
+    Ok(match format {
+        KeyFormat::Pem => {
             let public_key_str = String::from_utf8(input.to_vec())
                 .context("informal ecc public key")?;
             ed25519_dalek::VerifyingKey::from_public_key_pem(&public_key_str)
                 .context("informal pem public key")?
         }
-        KeyEncoding::Der => {
+        KeyFormat::Der => {
             ed25519_dalek::VerifyingKey::from_public_key_der(input)
                 .context("informal der public key")?
         }
@@ -194,8 +195,8 @@ fn import_curve_25519_public_key(
 
 fn export_curve_25519_private_key(
     secret_key: &ed25519_dalek::SigningKey,
-    format: EccKeyFormat,
-    codec: KeyEncoding,
+    pkcs: Pkcs,
+    format: KeyFormat,
 ) -> Result<Vec<u8>> {
     let transfer = |secret_key: &ed25519_dalek::SigningKey| {
         let private_key_bytes = Zeroizing::new(secret_key.to_bytes());
@@ -211,21 +212,21 @@ fn export_curve_25519_private_key(
         ))
     };
 
-    Ok(match format {
-        EccKeyFormat::BaseKeyFormat(_) => match codec {
-            KeyEncoding::Pem => secret_key
+    Ok(match pkcs {
+        Pkcs::Pkcs8 => match format {
+            KeyFormat::Pem => secret_key
                 .to_pkcs8_pem(base64ct::LineEnding::LF)
                 .context("export ecc pkcs8 pem private key failed")?
                 .as_bytes()
                 .to_vec(),
-            KeyEncoding::Der => secret_key
+            KeyFormat::Der => secret_key
                 .to_pkcs8_der()
                 .context("export ecc pkcs8 der private key failed")?
                 .as_bytes()
                 .to_vec(),
         },
-        EccKeyFormat::Sec1 => match codec {
-            KeyEncoding::Pem => {
+        Pkcs::Sec1 => match format {
+            KeyFormat::Pem => {
                 let ec_private_key_res: Result<Zeroizing<Vec<u8>>> =
                     transfer(secret_key);
                 let ec_private_key_res = ec_private_key_res?;
@@ -236,22 +237,23 @@ fn export_curve_25519_private_key(
                 );
                 pem::encode(&pem).as_bytes().to_vec()
             }
-            KeyEncoding::Der => transfer(secret_key)?.to_vec(),
+            KeyFormat::Der => transfer(secret_key)?.to_vec(),
         },
+        _ => return Err(Error::Unsupported("unsuppoted ecc tag".to_string())),
     })
 }
 
 pub(crate) fn export_curve_25519_public_key(
     public_key: ed25519_dalek::VerifyingKey,
-    codec: KeyEncoding,
+    format: KeyFormat,
 ) -> Result<Vec<u8>> {
-    Ok(match codec {
-        KeyEncoding::Pem => public_key
+    Ok(match format {
+        KeyFormat::Pem => public_key
             .to_public_key_pem(base64ct::LineEnding::LF)
             .context("init pem private key failed")?
             .as_bytes()
             .to_vec(),
-        KeyEncoding::Der => public_key
+        KeyFormat::Der => public_key
             .to_public_key_der()
             .context("init der private key failed")?
             .to_vec(),

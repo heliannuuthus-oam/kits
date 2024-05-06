@@ -12,9 +12,9 @@ export interface Converter<T extends PkcsEncoding> {
 	) => Promise<Uint8Array>;
 }
 
-export type ConvertRef<T extends PkcsEncoding> = {
-	getEncoding: () => T;
-	setEncoding: (encoding: T) => void;
+export type ConvertRef = {
+	getTextEncoding: () => TextEncoding;
+	setTextEncoding: (encoding: TextEncoding) => void;
 };
 
 export interface ConvertRadioProps<T extends PkcsEncoding>
@@ -30,6 +30,8 @@ export interface ConvertSelectProps<T extends PkcsEncoding>
 	textEncoding: TextEncoding;
 	getInputs: () => Record<string, string>;
 	setInputs: (inputs: Record<string, string>) => void;
+	value?: T;
+	onChange?: (value: T) => void;
 }
 
 export enum CurveName {
@@ -113,7 +115,7 @@ export class RsaConverter implements Converter<RsaEncoding> {
 			case fromData.pkcs === Pkcs.Pkcs1 && toData.pkcs === Pkcs.Pkcs8:
 			case fromData.pkcs === Pkcs.Pkcs8 && toData.pkcs === Pkcs.Pkcs8:
 			case fromData.pkcs === Pkcs.Pkcs1 && toData.pkcs === Pkcs.Pkcs1:
-				output = await invoke<Uint8Array>("pkcs8_pkcs1_transfer", {
+				output = await invoke<Uint8Array>("pkcs8_pkcs1_converter", {
 					input,
 					from: fromData,
 					to: toData,
@@ -156,7 +158,7 @@ export class EccConverter implements Converter<EccEncoding> {
 			case fromData.pkcs === Pkcs.Sec1 && toData.pkcs === Pkcs.Pkcs8:
 			case fromData.pkcs === Pkcs.Sec1 && toData.pkcs === Pkcs.Sec1:
 			case fromData.pkcs === Pkcs.Pkcs8 && toData.pkcs === Pkcs.Pkcs8:
-				output = await invoke<Uint8Array>("pkcs8_sec1_transfer", {
+				output = await invoke<Uint8Array>("pkcs8_sec1_converter", {
 					curveName: this.curveName,
 					input,
 					from: { ...fromData },
@@ -175,9 +177,5 @@ export class EccConverter implements Converter<EccEncoding> {
 
 export const rsaConverter = new RsaConverter();
 export const eccConverter = new EccConverter();
-
-export type RsaConvertRef = ConvertRef<RsaEncoding>;
 export type RsaConvertSelectProps = ConvertSelectProps<RsaEncoding>;
-
-export type EccConvertRef = ConvertRef<EccEncoding>;
 export type EccConvertSelectProps = ConvertSelectProps<EccEncoding>;

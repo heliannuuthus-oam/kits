@@ -16,10 +16,11 @@ function ConvertSelectInner<T extends PkcsEncoding>(
 		converter,
 		getInputs,
 		setInputs,
-		textEncoding,
+		value,
+		onChange,
 		...props
 	}: ConvertSelectProps<T>,
-	ref: ForwardedRef<ConvertRef<T>>
+	ref: ForwardedRef<ConvertRef>
 ) {
 	const [encoding, setEncoding] = useState<T>(props.defaultValue);
 	const [messageApi, contextHolder] = message.useMessage({
@@ -30,13 +31,13 @@ function ConvertSelectInner<T extends PkcsEncoding>(
 		Pkcs8Encoding.PKCS8_DER,
 		Sec1Encoding.SEC1_DER,
 	];
-	const selectEncoding = async (value: T) => {
-		console.log(textEncoding, value, encoding);
+
+	const selectEncoding = async (val: T) => {
 		if (textEncoding === TextEncoding.UTF8) {
 			const pkcs = ders.includes(encoding)
 				? PkcsEncodings[encoding]
-				: ders.includes(value)
-					? PkcsEncodings[value]
+				: ders.includes(val)
+					? PkcsEncodings[val]
 					: null;
 			if (pkcs) {
 				messageApi.warning({
@@ -55,6 +56,7 @@ function ConvertSelectInner<T extends PkcsEncoding>(
 		}
 
 		const inputs = getInputs();
+
 		try {
 			for (const [key, inputStr] of Object.entries(inputs)) {
 				const input = await converter.textCodecor.decode(
@@ -64,14 +66,14 @@ function ConvertSelectInner<T extends PkcsEncoding>(
 				const output = await converter.convert(
 					input,
 					encoding,
-					value,
+					val,
 					key === "publicKey"
 				);
 				inputs[key] = await converter.textCodecor.encode(textEncoding, output);
 			}
 			setInputs(inputs);
-
-			setEncoding(value);
+			setEncoding(val);
+			onChange?.(val);
 		} catch (err) {
 			console.log(err);
 		}
@@ -89,7 +91,7 @@ function ConvertSelectInner<T extends PkcsEncoding>(
 	return (
 		<>
 			{contextHolder}
-			<Select onSelect={selectEncoding} value={encoding} {...props} />
+			<Select onChange={selectEncoding} value={value || encoding} {...props} />
 		</>
 	);
 }
@@ -97,5 +99,5 @@ function ConvertSelectInner<T extends PkcsEncoding>(
 export const ConvertSelect = forwardRef(ConvertSelectInner) as <
 	T extends PkcsEncoding,
 >(
-	props: ConvertSelectProps<T> & { ref?: React.ForwardedRef<ConvertRef<T>> }
+	props: ConvertSelectProps<T> & { ref?: React.ForwardedRef<ConvertRef> }
 ) => ReturnType<typeof ConvertSelectInner>;

@@ -41,21 +41,20 @@ fn main() -> Result<()> {
             crypto::curve_25519::generate_curve_25519_key,
             crypto::curve_25519::curve_25519_ecies,
             // encrytion
-            crypto::aes::encrypt_aes,
-            crypto::aes::decrypt_aes,
+            crypto::aes::aes_crypto,
             crypto::rsa::encrypt_rsa,
             crypto::rsa::decrypt_rsa,
             crypto::ecc::ecies,
             // format
-            crypto::rsa::transfer_rsa_key,
+            crypto::rsa::ras_key_tansfer,
             helper::codec::base64_encode,
             helper::codec::base64_decode,
             helper::codec::hex_encode,
             helper::codec::hex_decode,
             helper::codec::string_encode,
             helper::codec::string_decode,
-            helper::codec::pkcs8_sec1_transfer,
-            helper::codec::pkcs8_pkcs1_transfer,
+            helper::codec::pkcs8_sec1_converter,
+            helper::codec::pkcs8_pkcs1_converter,
         ])
         .run(tauri::generate_context!())
         .context("error while running tauri application")?;

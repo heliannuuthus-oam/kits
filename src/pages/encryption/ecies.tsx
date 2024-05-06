@@ -22,10 +22,11 @@ import { TextRadioCodec } from "../../components/codec/TextCodecRadio";
 import { TextSelectCodec } from "../../components/codec/TextCodecSelect";
 import {
 	Pkcs8Encoding,
-	EccConvertRef,
 	PkcsEncodings,
 	eccConverter,
 	CurveName,
+	ConvertRef,
+	PkcsEncoding,
 } from "../../components/converter/converter";
 import { EccSelectConvert } from "../../components/converter/EccConvertSelect";
 
@@ -64,7 +65,7 @@ const EciesEncryption = () => {
 	const [form] = Form.useForm<EciesEncryptionForm>();
 	const [curveName, setCurveName] = useState<CurveName>(CurveName.NIST_P256);
 	const [generating, setGenerating] = useState<boolean>(false);
-	const pkiKeyCodecEl = useRef<EccConvertRef>(null);
+	const pkiKeyCodecEl = useRef<ConvertRef>(null);
 	const keyCodecEl = useRef<TextCodecRef>(null);
 	const inputCodecEl = useRef<TextCodecRef>(null);
 	const outputCodecEl = useRef<TextCodecRef>(null);
@@ -88,8 +89,8 @@ const EciesEncryption = () => {
 		if (key == null) {
 			key = await _getPrivateKey();
 		}
-		const pkcs8Encoding =
-			pkiKeyCodecEl.current?.getEncoding() || Pkcs8Encoding.PKCS8_PEM;
+		const pkcs8Encoding: PkcsEncoding =
+			form.getFieldValue("encoding") || Pkcs8Encoding.PKCS8_PEM;
 
 		const { pkcs, encoding } = PkcsEncodings[pkcs8Encoding];
 
@@ -117,8 +118,8 @@ const EciesEncryption = () => {
 	const generatePrivateKey = async () => {
 		setGenerating(true);
 		try {
-			const pkcs8Encoding =
-				pkiKeyCodecEl.current?.getEncoding() || Pkcs8Encoding.PKCS8_PEM;
+			const pkcs8Encoding: PkcsEncoding =
+				form.getFieldValue("encoding") || Pkcs8Encoding.PKCS8_PEM;
 			const [privateKeyBytes, publicKeyBytes] = await invoke<Uint8Array[]>(
 				"generate_ecc",
 				{
@@ -204,7 +205,7 @@ const EciesEncryption = () => {
 							vertical
 							style={{ height: keyHeight }}
 						>
-							<Form.Item noStyle>
+							<Form.Item noStyle name="encoding">
 								<EccSelectConvert
 									converter={eccConverter}
 									disabled={generating}

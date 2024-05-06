@@ -4,7 +4,15 @@ import { CodecRef } from "./codec";
 import { CodecSelectProps } from "./codec";
 
 function CodecSelectInner<T>(
-	{ codecor, callback, getInputs, setInputs, ...props }: CodecSelectProps<T>,
+	{
+		codecor,
+		callback,
+		getInputs,
+		setInputs,
+		value,
+		onChange,
+		...props
+	}: CodecSelectProps<T>,
 	ref: ForwardedRef<CodecRef<T>>
 ) {
 	const [encoding, setEncoding] = useState<T>(props.defaultValue);
@@ -22,20 +30,20 @@ function CodecSelectInner<T>(
 		});
 	};
 
-	const selectEncoding = async (value: T) => {
+	const selectEncoding = async (val: T) => {
 		const inputs = getInputs();
 		try {
 			for (const [key, input] of Object.entries(inputs)) {
 				const decoded = await codecor.decode(encoding, input);
-
-				const encoded = await codecor.encode(value, decoded);
+				const encoded = await codecor.encode(val, decoded);
 				inputs[key] = encoded;
 			}
 			setInputs(inputs);
-			callback?.(value);
-			setEncoding(value);
+			callback?.(val);
+			setEncoding(val);
+			onChange?.(val);
 		} catch (err: unknown) {
-			openNotification(encoding, value, err as string);
+			openNotification(encoding, val, err as string);
 		}
 	};
 
@@ -51,7 +59,7 @@ function CodecSelectInner<T>(
 	return (
 		<>
 			{contextHolder}
-			<Select onSelect={selectEncoding} value={encoding} {...props} />
+			<Select onChange={selectEncoding} value={value || encoding} {...props} />
 		</>
 	);
 }

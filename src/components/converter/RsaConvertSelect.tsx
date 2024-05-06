@@ -2,18 +2,22 @@ import { forwardRef } from "react";
 import {
 	Pkcs1Encoding,
 	Pkcs8Encoding,
-	RsaConvertRef,
+	ConvertRef,
 	RsaConvertSelectProps,
 	rsaConverter,
 } from "./converter";
 import { ConvertSelect } from "./ConvertSelect";
 
-export const RsaSelectConvert = forwardRef<
-	RsaConvertRef,
-	RsaConvertSelectProps
->(
+export const RsaSelectConvert = forwardRef<ConvertRef, RsaConvertSelectProps>(
 	(
-		{ converter = rsaConverter, getInputs, setInputs, textEncoding, ...props },
+		{
+			converter = rsaConverter,
+			getInputs,
+			setInputs,
+			onChange,
+			value,
+			...props
+		},
 		ref
 	) => {
 		return (
@@ -22,7 +26,8 @@ export const RsaSelectConvert = forwardRef<
 				converter={converter}
 				getInputs={getInputs}
 				setInputs={setInputs}
-				textEncoding={textEncoding}
+				value={value}
+				onChange={onChange}
 				defaultValue={Pkcs8Encoding.PKCS8_PEM}
 				options={[
 					{ value: Pkcs8Encoding.PKCS8_PEM, label: <span>pkcs8-pem</span> },

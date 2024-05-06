@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 import {
-	EccConvertRef,
+	ConvertRef,
 	EccConvertSelectProps,
 	Pkcs8Encoding,
 	Sec1Encoding,
@@ -8,12 +8,16 @@ import {
 } from "./converter";
 import { ConvertSelect } from "./ConvertSelect";
 
-export const EccSelectConvert = forwardRef<
-	EccConvertRef,
-	EccConvertSelectProps
->(
+export const EccSelectConvert = forwardRef<ConvertRef, EccConvertSelectProps>(
 	(
-		{ converter = eccConverter, getInputs, setInputs, textEncoding, ...props },
+		{
+			converter = eccConverter,
+			getInputs,
+			setInputs,
+			onChange,
+			value,
+			...props
+		},
 		ref
 	) => {
 		return (
@@ -22,7 +26,8 @@ export const EccSelectConvert = forwardRef<
 				converter={converter}
 				getInputs={getInputs}
 				setInputs={setInputs}
-				textEncoding={textEncoding}
+				value={value}
+				onChange={onChange}
 				defaultValue={Pkcs8Encoding.PKCS8_PEM}
 				options={[
 					{ value: Pkcs8Encoding.PKCS8_PEM, label: <span>pkcs8-pem</span> },

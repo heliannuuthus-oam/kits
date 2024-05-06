@@ -31,34 +31,23 @@ pub fn generate_aes(key_size: usize) -> Result<ByteBuf> {
 }
 
 #[tauri::command]
-pub fn encrypt_aes(
-    mode: EncryptionMode,
-    key: ByteBuf,
-    input: ByteBuf,
-    padding: AesEncryptionPadding,
-    iv: Option<ByteBuf>,
-    aad: Option<ByteBuf>,
-) -> Result<Vec<u8>> {
-    info!("aes encryption-> mode: {:?} padding: {:?}", mode, padding);
-    let iv: Option<Vec<u8>> = iv.map(|nonce| nonce.to_vec());
-    let aad: Option<Vec<u8>> = aad.map(|association| association.to_vec());
-    encrypt_or_decrypt_aes(mode, &key, &input, padding, iv, aad, true)
-}
-
-#[tauri::command]
 #[tracing::instrument(level = "debug")]
-pub fn decrypt_aes(
+pub fn aes_crypto(
     mode: EncryptionMode,
     key: ByteBuf,
     input: ByteBuf,
     padding: AesEncryptionPadding,
     iv: Option<ByteBuf>,
     aad: Option<ByteBuf>,
+    for_encryption: bool,
 ) -> Result<Vec<u8>> {
-    info!("aes decryption-> mode: {:?} padding: {:?}", mode, padding);
+    info!(
+        "aes crypto-> for_encryption: {} mode: {:?} padding: {:?}",
+        for_encryption, mode, padding
+    );
     let iv: Option<Vec<u8>> = iv.map(|nonce| nonce.to_vec());
     let aad: Option<Vec<u8>> = aad.map(|association| association.to_vec());
-    encrypt_or_decrypt_aes(mode, &key, &input, padding, iv, aad, false)
+    encrypt_or_decrypt_aes(mode, &key, &input, padding, iv, aad, for_encryption)
 }
 
 pub(crate) fn encrypt_or_decrypt_aes(
