@@ -1,15 +1,14 @@
 import { Col, Form, Row } from "antd";
+
 import AesInput from "../../components/aes/Input";
-import AesOutput from "../../components/aes/Output";
 import { TextEncoding } from "../../components/codec/codec";
 import {
 	EncryptionMode,
 	AesPadding,
 	AesSetting,
 } from "../../components/aes/Setting";
-import { useState } from "react";
 
-export type AesForm = {
+export type AesEncryptionForm = {
 	iv?: string;
 	key: string;
 	padding: AesPadding;
@@ -19,6 +18,7 @@ export type AesForm = {
 	output: string;
 	keyEncoding: TextEncoding;
 	ivEncoding: TextEncoding;
+	inputEncoding: TextEncoding;
 	outputEncoding: TextEncoding;
 	forEncryption: boolean;
 };
@@ -26,28 +26,32 @@ export type AesForm = {
 export const aesComponentSize = "middle";
 
 const AesEncryption = () => {
-	const [form] = Form.useForm<AesForm>();
+	const [form] = Form.useForm<AesEncryptionForm>();
 
-	const initialValues: AesForm = {
+	const initialValues: AesEncryptionForm = {
 		mode: EncryptionMode.CBC,
 		padding: AesPadding.Pkcs7Padding,
 		iv: "",
 		key: "",
 		input: "",
 		output: "",
-		keyEncoding: TextEncoding.Base64,
-		ivEncoding: TextEncoding.Base64,
+		keyEncoding: TextEncoding.UTF8,
+		ivEncoding: TextEncoding.UTF8,
+		inputEncoding: TextEncoding.UTF8,
 		outputEncoding: TextEncoding.Base64,
 		forEncryption: true,
 	};
 
-	const onValuesChange = (value: object) => {
+	const onValuesChange = (value: Record<string, unknown>) => {
 		if (Object.keys(value).indexOf("mode") !== -1) {
-			form.setFieldsValue({ key: undefined, iv: undefined });
+			const updated: Record<string, unknown> = { iv: undefined };
+			const mode: string = (value as { mode: string })["mode"];
+			if (mode === EncryptionMode.GCM) {
+				updated["padding"] = AesPadding.NoPadding;
+			}
+			form.setFieldsValue(updated);
 		}
 	};
-
-	const [settingOpen, setSettingOpen] = useState<boolean>(false);
 
 	return (
 		<Form
@@ -59,19 +63,11 @@ const AesEncryption = () => {
 			style={{ width: "100%", padding: 24 }}
 			validateTrigger="onBlur"
 		>
-			<Row>
+			<Row className="aes" align="middle">
+				<AesInput />
 				<Col span={12}>
-					<AesInput setSettingOpen={setSettingOpen} />
+					<AesSetting />
 				</Col>
-				<Col span={12}>
-					<AesOutput />
-				</Col>
-				<AesSetting
-					placement={"left"}
-					width={"20%"}
-					open={settingOpen}
-					onClose={() => setSettingOpen(false)}
-				/>
 			</Row>
 		</Form>
 	);

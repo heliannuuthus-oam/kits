@@ -12,10 +12,11 @@ import {
 	notification,
 } from "antd";
 import { useState } from "react";
-import { TextEncoding, textCodecor } from "../codec/codec";
+import { TextEncoding } from "../codec/codec";
 import { EncryptionMode } from "./Setting";
-import { AesForm } from "../../pages/encryption/aes";
-import { OptionButton } from "../OptionButton";
+import { AesEncryptionForm } from "../../pages/encryption/aes";
+import useFormInstance from "antd/es/form/hooks/useFormInstance";
+import { useWatch } from "antd/es/form/Form";
 
 const { TextArea } = Input;
 
@@ -49,12 +50,8 @@ const keyComputer = (keySize: number, encoding: TextEncoding): number => {
 	return length;
 };
 
-const AesInput = ({
-	setSettingOpen,
-}: {
-	setSettingOpen: (settingOpen: boolean) => void;
-}) => {
-	const form = Form.useFormInstance<AesForm>();
+const AesInput = () => {
+	const form = Form.useFormInstance<AesEncryptionForm>();
 	const [keySize, setKeySize] = useState<number>(128);
 	const mode = Form.useWatch("mode", form);
 	const forEncryption = Form.useWatch("forEncryption", {
@@ -92,26 +89,8 @@ const AesInput = ({
 		}),
 	];
 
-	const ivValidator: FormRule[] = [
-		{ required: true, message: "iv is required" },
-		({ getFieldValue }) => ({
-			validator(_, value) {
-				const encoding = form.getFieldValue("ivEncoding");
-				const length = ivComputer(mode, encoding);
-				if (!value || getFieldValue("iv").length === length) {
-					return Promise.resolve();
-				}
-				return Promise.reject(
-					new Error(
-						`iv must be a ${encoding} encodings character of ${length} length`
-					)
-				);
-			},
-		}),
-	];
-
-	const inputValidator: FormRule[] = [
-		{ required: true, message: "input is required" },
+	const textareaValidator: FormRule[] = [
+		{ required: true, message: "content is required" },
 		{
 			min: 1,
 			message: "message must not be empty",
@@ -120,68 +99,14 @@ const AesInput = ({
 
 	const generateKey = async () => {
 		try {
-			const dataBytes = await invoke<Uint8Array>("generate_aes", {
-				keySize: keySize,
+			const key = await invoke<string>("generate_aes", {
+				keySize,
+				encoding: form.getFieldValue("keyEncoding"),
 			});
 
-			const data = await textCodecor.encode(
-				form.getFieldValue("keyEncoding") || TextEncoding.Base64,
-				dataBytes
-			);
-
-			form.setFieldsValue({ key: data });
+			form.setFieldsValue({ key });
 		} catch (err: unknown) {
 			notify(err);
-		}
-	};
-
-	const generateIv = async () => {
-		try {
-			const dataBytes = await invoke<Uint8Array>("generate_iv", {
-				size: mode === EncryptionMode.CBC ? 16 : 12,
-			});
-			const data = await textCodecor.encode(
-				form.getFieldValue("ivEncoding"),
-				dataBytes
-			);
-
-			form.setFieldsValue({ iv: data });
-		} catch (err: unknown) {
-			notify(err);
-		}
-	};
-
-	const encryptOrDecrypt = async () => {
-		try {
-			await form.validateFields({ validateOnly: true });
-			const input = form.getFieldValue("input");
-			const iv =
-				mode === EncryptionMode.ECB
-					? []
-					: await textCodecor.decode(
-							form.getFieldValue("ivEncoding"),
-							form.getFieldValue("iv")
-						);
-			const key = await textCodecor.decode(
-				form.getFieldValue("keyEncoding"),
-				form.getFieldValue("key")
-			);
-
-			const outputBytes = await invoke<Uint8Array>("aes_crypto", {
-				...form.getFieldsValue(true),
-				input,
-				iv,
-				key,
-			});
-			const output = await textCodecor.encode(
-				form.getFieldValue("outputEncoding"),
-				outputBytes
-			);
-
-			form.setFieldsValue({ output });
-		} catch (err: unknown) {
-			form.setFieldsValue({ output: "" });
-			console.log(err);
 		}
 	};
 
@@ -190,20 +115,7 @@ const AesInput = ({
 			case EncryptionMode.CBC:
 				return (
 					<Form.Item key="cbc_iv">
-						<Space.Compact size={size} style={{ width: "100%" }}>
-							<Form.Item
-								hasFeedback
-								noStyle
-								name="iv"
-								dependencies={["mode"]}
-								rules={ivValidator}
-							>
-								<Input placeholder="input iv" />
-							</Form.Item>
-							<Button style={{ margin: 0 }} onClick={generateIv}>
-								generate iv
-							</Button>
-						</Space.Compact>
+						<IvInput />
 					</Form.Item>
 				);
 
@@ -211,22 +123,10 @@ const AesInput = ({
 				return (
 					<>
 						<Form.Item key="gcm_iv" hasFeedback>
-							<Space.Compact size={size} style={{ width: "100%" }}>
-								<Form.Item
-									noStyle
-									name="iv"
-									dependencies={["mode"]}
-									rules={ivValidator}
-									hasFeedback
-								>
-									<Input placeholder="input iv" />
-								</Form.Item>
-								<Button style={{ margin: 0 }} onClick={generateIv}>
-									generate iv
-								</Button>
-							</Space.Compact>
+							<IvInput />
 						</Form.Item>
 						<Form.Item key="gcm_aad" name="aad">
+							<InputTitle content="Aad" />
 							<Input placeholder="input aad" />
 						</Form.Item>
 					</>
@@ -237,81 +137,10 @@ const AesInput = ({
 	};
 
 	return (
-		<>
+		<Col span={12}>
 			{notifyContextHodler}
-			<Form.Item key="basic">
-				<Row justify="space-between" align="middle">
-					<Col>
-						<Title style={{ margin: 0 }} level={5}>
-							Input:
-						</Title>
-					</Col>
-					<Col>
-						<Button type="primary" onClick={() => setSettingOpen(true)}>
-							settings
-						</Button>
-					</Col>
-					<Col>
-						<Space.Compact>
-							<OptionButton
-								menu={{
-									items: [
-										{
-											label: (
-												<div
-													onClick={(_) => {
-														form.setFieldsValue({
-															forEncryption: true,
-														});
-														form.resetFields([
-															"input",
-															"output",
-															"outputEncoding",
-															"inputEncoding",
-														]);
-													}}
-												>
-													encrypt
-												</div>
-											),
-											key: "encrypt",
-										},
-										{
-											label: (
-												<div
-													onClick={(_) => {
-														const output = form.getFieldValue("output");
-														const data: Record<string, unknown> = {
-															forEncryption: false,
-														};
-														if (output && output !== "") {
-															data["input"] = output;
-														}
-														form.setFieldsValue(data);
-														form.resetFields([
-															"output",
-															"outputEncoding",
-															"inputEncoding",
-														]);
-													}}
-												>
-													decrypt
-												</div>
-											),
-											key: "decrypt",
-										},
-									],
-								}}
-								onClick={encryptOrDecrypt}
-								size={size}
-								children={forEncryption === false ? "decrypt" : "encrypt"}
-							></OptionButton>
-						</Space.Compact>
-					</Col>
-				</Row>
-			</Form.Item>
-
 			<Form.Item key="key">
+				<InputTitle content="Key" />
 				<Space.Compact size={size} style={{ width: "100%" }}>
 					<Form.Item
 						noStyle
@@ -332,24 +161,104 @@ const AesInput = ({
 						]}
 					/>
 					<Button style={{ margin: 0 }} onClick={generateKey}>
-						generate key
+						generate
 					</Button>
 				</Space.Compact>
 			</Form.Item>
 			{renderExtract(mode)}
-
+			<InputTitle content="Input" />
 			<Form.Item key="input">
 				<div
 					style={{
-						height: 560,
+						height: 200,
 					}}
 				>
-					<Form.Item noStyle name="input" rules={inputValidator}>
+					<Form.Item noStyle name="input" rules={textareaValidator}>
 						<TextArea style={{ height: "100%", resize: "none" }} />
 					</Form.Item>
 				</div>
 			</Form.Item>
+			<InputTitle content="Output" />
+			<Form.Item key="output">
+				<div
+					style={{
+						height: 200,
+					}}
+				>
+					<Form.Item noStyle name="output">
+						<TextArea style={{ height: "100%", resize: "none" }} />
+					</Form.Item>
+				</div>
+			</Form.Item>
+		</Col>
+	);
+};
+
+const IvInput = () => {
+	const form = useFormInstance<AesEncryptionForm>();
+	const mode = useWatch("mode", form);
+
+	const ivValidator: FormRule[] = [
+		{ required: true, message: "iv is required" },
+		({ getFieldValue }) => ({
+			validator(_, value) {
+				const encoding = form.getFieldValue("ivEncoding");
+				const length = ivComputer(mode, encoding);
+				if (!value || getFieldValue("iv").length === length) {
+					return Promise.resolve();
+				}
+				return Promise.reject(
+					new Error(
+						`iv must be a ${encoding} encodings character of ${length} length`
+					)
+				);
+			},
+		}),
+	];
+
+	const generateIv = async () => {
+		try {
+			const iv = await invoke<string>("generate_iv", {
+				size: mode === EncryptionMode.CBC ? 16 : 12,
+				encoding: form.getFieldValue("ivEncoding"),
+			});
+
+			form.setFieldsValue({ iv });
+		} catch (err: unknown) {
+			console.log(err);
+		}
+	};
+
+	return (
+		<>
+			<InputTitle content="Iv" />
+			<Space.Compact size={size} style={{ width: "100%" }}>
+				<Form.Item
+					hasFeedback
+					noStyle
+					name="iv"
+					dependencies={["mode"]}
+					rules={ivValidator}
+				>
+					<Input placeholder="input iv" />
+				</Form.Item>
+				<Button style={{ margin: 0 }} onClick={generateIv}>
+					generate
+				</Button>
+			</Space.Compact>
 		</>
+	);
+};
+
+const InputTitle = ({ content }: { content: string }) => {
+	return (
+		<Row justify="space-between" align="middle">
+			<Col>
+				<Title style={{ margin: "0 0 12px 0" }} level={5}>
+					{content}:
+				</Title>
+			</Col>
+		</Row>
 	);
 };
 

@@ -15,22 +15,28 @@ function ConvertSelectInner(
 	}: ConvertSelectProps<TextEncoding, TextEncoding>,
 	_ref: ForwardedRef<ConvertRef>
 ) {
-	const [encoding, setEncoding] = useState<TextEncoding>(props.defaultValue);
+	const [encoding, setEncoding] = useState<TextEncoding>(
+		value || TextEncoding.Base64
+	);
 	const [messageApi, contextHolder] = message.useMessage({
 		maxCount: 1,
 	});
 
 	const selectEncoding = async (val: TextEncoding) => {
-		const { privateKey, publicKey } = getInputs();
-
+		const data = getInputs();
+		const outputs: Record<string, unknown> = {};
 		try {
-			const output = await converter.convert(
-				privateKey as string,
-				publicKey as string,
-				encoding,
-				val
-			);
-			setInputs({ output: output });
+			for (const k in data) {
+				const d = data[k];
+				const output = await converter.convert(
+					d as string,
+					d as string,
+					encoding,
+					val
+				);
+				outputs[k] = output;
+			}
+			setInputs(outputs);
 			setEncoding(val);
 			onChange?.(val);
 		} catch (err) {

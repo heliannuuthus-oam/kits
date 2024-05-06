@@ -237,9 +237,27 @@ export class EdwardsEncodingConverter extends Converter<PkcsEncodingProps> {
 		});
 	}
 }
+
+export class TextEncodingConverter extends Converter<TextEncoding> {
+	async convert(
+		privateKey: string,
+		_publicKey: string,
+		from: TextEncoding,
+		to: TextEncoding,
+		_params?: Record<string, unknown>
+	): Promise<string[]> {
+		console.log(privateKey, from, to);
+		return await invoke<string[]>("convert_encoding", {
+			input: privateKey,
+			from,
+			to,
+		});
+	}
+}
 export const rsaPkcsConverter = new RsaPkcsConverter();
 export const eccPkcsConverter = new EdwardsPkcsConverter();
 export const edwardPkcsConverter = new EdwardsPkcsConverter();
 export const rsaEncodingConverter = new RsaEncodingConverter();
 export const eccEncodingConverter = new EccEncodingConverter();
 export const edwardsEncodingConverter = new EdwardsEncodingConverter();
+export const textEncodingConverter = new TextEncodingConverter();

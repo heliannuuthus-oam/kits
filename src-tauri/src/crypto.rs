@@ -16,6 +16,7 @@ pub trait EncryptionDto {
 macro_rules! add_encryption_trait_impl {
   ($struct_name:ident { $($field_name:ident : $field_type:ty),* }) => {
       #[derive(Clone, Serialize, Deserialize)]
+      #[serde(rename_all = "camelCase")]
       pub struct $struct_name {
           pub input: String,
           pub input_encoding: TextEncoding,

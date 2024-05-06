@@ -49,12 +49,7 @@ fn main() -> Result<()> {
             crypto::rsa::transfer_rsa_key,
             crypto::ecc::transfer_ecc_key,
             crypto::edwards::transfer_edwards_key,
-            utils::codec::base64_encode,
-            utils::codec::base64_decode,
-            utils::codec::hex_encode,
-            utils::codec::hex_decode,
-            utils::codec::string_encode,
-            utils::codec::string_decode
+            utils::codec::convert_encoding,
         ])
         .run(tauri::generate_context!())
         .context("error while running tauri application")?;
