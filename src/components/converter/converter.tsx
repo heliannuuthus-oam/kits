@@ -15,8 +15,6 @@ export interface Converter<T extends PkcsEncoding> {
 export type ConvertRef<T extends PkcsEncoding> = {
 	getEncoding: () => T;
 	setEncoding: (encoding: T) => void;
-	getTextEncoding: () => TextEncoding;
-	setTextEncoding: (encoding: TextEncoding) => void;
 };
 
 export interface ConvertRadioProps<T extends PkcsEncoding>
@@ -29,6 +27,7 @@ export interface ConvertRadioProps<T extends PkcsEncoding>
 export interface ConvertSelectProps<T extends PkcsEncoding>
 	extends SelectProps {
 	converter: Converter<T>;
+	textEncoding: TextEncoding;
 	getInputs: () => Record<string, string>;
 	setInputs: (inputs: Record<string, string>) => void;
 }
