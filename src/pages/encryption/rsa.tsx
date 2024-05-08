@@ -404,6 +404,7 @@ const RsaEncryption = () => {
 									getInputs={() =>
 										form.getFieldsValue(["privateKey", "publicKey"])
 									}
+									textEncoding={TextEncoding.Base64}
 									setInputs={form.setFieldsValue}
 									ref={rsaConvertEl}
 								/>

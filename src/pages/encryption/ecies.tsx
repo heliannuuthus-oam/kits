@@ -11,7 +11,7 @@ import {
 	Typography,
 } from "antd";
 import TextArea, { TextAreaProps } from "antd/es/input/TextArea";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
 	TextCodecRef,
 	TextEncoding,
@@ -76,10 +76,6 @@ const EciesEncryption = () => {
 	const inputValidator: FormRule[] = [
 		{ required: true, message: "input is required" },
 	];
-
-	useEffect(() => {
-		pkiKeyCodecEl.current?.setTextEncoding(TextEncoding.UTF8);
-	}, [pkiKeyCodecEl]);
 
 	const _getPrivateKey = async (): Promise<Uint8Array> => {
 		const encoding = keyCodecEl.current?.getEncoding() || TextEncoding.Base64;
@@ -216,6 +212,7 @@ const EciesEncryption = () => {
 										minWidth: keyButtonWidth,
 										minHeight: keyButtonHeight,
 									}}
+									textEncoding={TextEncoding.Base64}
 									getInputs={() =>
 										form.getFieldsValue(["privateKey", "publicKey"])
 									}
@@ -231,9 +228,6 @@ const EciesEncryption = () => {
 								getInputs={() =>
 									form.getFieldsValue(["privateKey", "publicKey"])
 								}
-								callback={(value) => {
-									pkiKeyCodecEl.current?.setTextEncoding(value);
-								}}
 								setInputs={form.setFieldsValue}
 								disabled={generating}
 								style={{

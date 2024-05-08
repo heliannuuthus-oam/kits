@@ -12,13 +12,16 @@ import { ConvertSelectProps } from "./converter";
 import { TextEncoding } from "../codec/codec";
 
 function ConvertSelectInner<T extends PkcsEncoding>(
-	{ converter, getInputs, setInputs, ...props }: ConvertSelectProps<T>,
+	{
+		converter,
+		getInputs,
+		setInputs,
+		textEncoding,
+		...props
+	}: ConvertSelectProps<T>,
 	ref: ForwardedRef<ConvertRef<T>>
 ) {
 	const [encoding, setEncoding] = useState<T>(props.defaultValue);
-	const [textEncoding, setTextEncoding] = useState<TextEncoding>(
-		TextEncoding.UTF8
-	);
 	const [messageApi, contextHolder] = message.useMessage({
 		maxCount: 1,
 	});
@@ -80,12 +83,6 @@ function ConvertSelectInner<T extends PkcsEncoding>(
 		},
 		setEncoding(encoding: T) {
 			setEncoding(encoding);
-		},
-		getTextEncoding() {
-			return textEncoding;
-		},
-		setTextEncoding(encoding: TextEncoding) {
-			setTextEncoding(encoding);
 		},
 	}));
 
