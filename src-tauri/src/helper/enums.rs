@@ -30,7 +30,6 @@ pub enum AsymmetricKeyFormat {
     Pkcs8Der,
 }
 
-
 #[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub enum PkcsEncoding {
     #[serde(rename = "pkcs8")]

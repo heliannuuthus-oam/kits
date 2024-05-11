@@ -18,10 +18,7 @@ use tracing::info;
 use crate::helper::{
     codec::PkcsDto,
     common::KeyTuple,
-    enums::{
-        Digest, KeyEncoding, PkcsEncoding,
-        RsaEncryptionPadding,
-    },
+    enums::{Digest, KeyEncoding, PkcsEncoding, RsaEncryptionPadding},
     errors::{Error, Result},
 };
 
