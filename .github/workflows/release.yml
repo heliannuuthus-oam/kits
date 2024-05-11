@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   project:
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust-tauri.yml@v0.5.2
+    uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust-tauri.yml@master
     permissions:
       contents: write
       packages: write
