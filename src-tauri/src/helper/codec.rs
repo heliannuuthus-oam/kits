@@ -13,7 +13,7 @@ use crate::helper::enums::PkcsEncoding;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct PkcsDto {
-   pub pkcs: PkcsEncoding,
+    pub pkcs: PkcsEncoding,
     pub encoding: KeyEncoding,
 }
 
@@ -287,7 +287,7 @@ fn pkcs8_pkcs1_transfer_inner(
         }
         PkcsEncoding::Pkcs1 => {
             if is_public {
-                let key = public_bytes_to_pkcs8::<rsa::RsaPublicKey>(
+                let key = public_bytes_to_pkcs1::<rsa::RsaPublicKey>(
                     input,
                     from.encoding,
                 )?;
@@ -303,7 +303,7 @@ fn pkcs8_pkcs1_transfer_inner(
                     )),
                 }
             } else {
-                let key = private_bytes_to_pkcs8::<rsa::RsaPrivateKey>(
+                let key = private_bytes_to_pkcs1::<rsa::RsaPrivateKey>(
                     input,
                     from.encoding,
                 )?;

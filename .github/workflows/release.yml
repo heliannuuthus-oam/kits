@@ -1,0 +1,26 @@
+on:
+  push:
+    tags:
+      - "v*.*.*"
+    paths-ignore:
+      - "README.md"
+      - "docs/**"
+      - ".vscode"
+
+permissions:
+  actions: write
+  contents: write
+  security-events: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  project:
+    uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust-tauri.yml@v0.5.2
+    permissions:
+      contents: write
+      packages: write
+    with:
+      toolchain: "nightly"
