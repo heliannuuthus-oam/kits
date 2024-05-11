@@ -9,8 +9,8 @@ on:
 
 jobs:
   rust:
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust.yml@v0.5.2
+    uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust.yml@master
     with:
       workdir: "./src-tauri"
   node:
-    uses: heliannuuthus/integrate-deploy/.github/workflows/call-node.yml@v0.5.2
+    uses: heliannuuthus/integrate-deploy/.github/workflows/call-node.yml@master
