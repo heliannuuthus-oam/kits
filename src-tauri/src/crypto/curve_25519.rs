@@ -72,11 +72,11 @@ pub(crate) fn curve_25519_ecies(data: EciesDto) -> Result<String> {
         );
         let encrypted = crypto::aes::encrypt_or_decrypt_aes(
             EncryptionMode::Gcm,
-            secret,
             &input,
-            AesEncryptionPadding::NoPadding,
+            secret,
             Some(iv.to_vec()),
             None,
+            AesEncryptionPadding::NoPadding,
             data.for_encryption,
         )?;
         result.extend_from_slice(&encrypted);
@@ -116,11 +116,11 @@ pub(crate) fn curve_25519_ecies(data: EciesDto) -> Result<String> {
         );
         crypto::aes::encrypt_or_decrypt_aes(
             EncryptionMode::Gcm,
-            secret,
             input,
-            AesEncryptionPadding::NoPadding,
+            secret,
             Some(iv.to_vec()),
             None,
+            AesEncryptionPadding::NoPadding,
             data.for_encryption,
         )?
     };

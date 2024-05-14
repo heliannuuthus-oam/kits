@@ -1,3 +1,4 @@
+
 use digest::{Digest as Di, DynDigest};
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +19,7 @@ pub enum EccCurveName {
     Secp256k1,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum EncryptionMode {
     Ecb,
@@ -83,7 +84,7 @@ pub enum RsaEncryptionPadding {
     Oaep,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum AesEncryptionPadding {
     Pkcs7Padding,
     NoPadding,

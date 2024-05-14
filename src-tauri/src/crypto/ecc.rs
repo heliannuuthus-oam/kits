@@ -177,15 +177,15 @@ where
             shared_secret.raw_secret_bytes(),
             SALT.as_bytes(),
             210_000,
-        );
+        );  
         let (secret, iv) = pkf_key.split_at(32);
         let encrypted = crypto::aes::encrypt_or_decrypt_aes(
             EncryptionMode::Gcm,
-            secret,
             input,
-            AesEncryptionPadding::NoPadding,
+            secret,
             Some(iv.to_vec()),
             None,
+            AesEncryptionPadding::NoPadding,
             for_encryption,
         )?;
         result.extend_from_slice(&encrypted);
@@ -216,11 +216,11 @@ where
         let (secret, iv) = pkf_key.split_at(32);
         crypto::aes::encrypt_or_decrypt_aes(
             EncryptionMode::Gcm,
-            secret,
             input,
-            AesEncryptionPadding::NoPadding,
+            secret,
             Some(iv.to_vec()),
             None,
+            AesEncryptionPadding::NoPadding,
             for_encryption,
         )?
     })
