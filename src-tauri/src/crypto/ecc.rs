@@ -10,7 +10,7 @@ use spki::DecodePublicKey;
 
 use crate::{
     crypto::{self, kdf::SALT},
-    helper::{
+    utils::{
         common::KeyTuple,
         enums::{
             AesEncryptionPadding, EccCurveName, EciesEncryptionAlgorithm,
@@ -396,7 +396,7 @@ mod test {
 
     use crate::{
         crypto::ecc::{ecies, generate_ecc, EciesDto},
-        helper::enums::{
+        utils::enums::{
             EccCurveName, EciesEncryptionAlgorithm, KeyFormat, Pkcs,
             TextEncoding,
         },

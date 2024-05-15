@@ -9,7 +9,7 @@ use zeroize::Zeroizing;
 use super::ecc::EciesDto;
 use crate::{
     crypto::{self, kdf::SALT},
-    helper::{
+    utils::{
         common::KeyTuple,
         enums::{
             AesEncryptionPadding, EncryptionMode, KeyFormat, Pkcs, TextEncoding,

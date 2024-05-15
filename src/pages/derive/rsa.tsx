@@ -10,23 +10,19 @@ import {
 	Typography,
 } from "antd";
 import { DefaultTextArea } from "../encryption/rsa";
-import { useRef, useState } from "react";
-import {
-	TextCodecRef,
-	TextEncoding,
-	textCodecor,
-} from "../../components/codec/codec";
+import { useState } from "react";
+import { TextEncoding } from "../../components/codec/codec";
 import { useForm } from "antd/es/form/Form";
 import {
-	ConvertRef,
-	Pkcs8Encoding,
-	PkcsEncoding,
-	PkcsEncodings,
-	rsaConverter,
+	Pkcs8Format,
+	PkcsFormat,
+	PkcsFormats,
+	rsaEncodingConverter,
+	rsaPkcsConverter,
 } from "../../components/converter/converter";
 import { invoke } from "@tauri-apps/api";
-import { RsaSelectConvert } from "../../components/converter/RsaConvertSelect";
-import { TextSelectCodec } from "../../components/codec/TextCodecSelect";
+import { RsaPkcsSelect } from "../../components/rsa/RsaPkcsSelect";
+import { RsaEncodingSelect } from "../../components/rsa/RsaEncodingSelect";
 
 const keySizes: SelectProps["options"] = [2048, 3072, 4096].map((bit) => {
 	return {
@@ -42,21 +38,19 @@ const keyButtonWidth = 120;
 export type RsaDeriveKeyForm = {
 	privateKey: string;
 	publicKey: string;
-	pkcsEncoding: PkcsEncoding;
-	textEncoding: TextEncoding;
+	pkcsFormat: PkcsFormat;
+	encoding: TextEncoding;
 	keySize: number;
 };
 
 const RsaDeriveKey = () => {
 	const [form] = useForm<RsaDeriveKeyForm>();
-	const rsaConvertEl = useRef<ConvertRef>(null);
-	const keyCodecEl = useRef<TextCodecRef>(null);
 	const [generating, setGenerating] = useState<boolean>(false);
 	const initFormValue: RsaDeriveKeyForm = {
 		privateKey: "",
 		publicKey: "",
-		pkcsEncoding: Pkcs8Encoding.PKCS8_PEM,
-		textEncoding: TextEncoding.UTF8,
+		pkcsFormat: Pkcs8Format.PKCS8_PEM,
+		encoding: TextEncoding.UTF8,
 		keySize: 2048,
 	};
 
@@ -64,32 +58,19 @@ const RsaDeriveKey = () => {
 		{ required: true, message: "key is required" },
 	];
 
-	const _getPrivateKey = async (): Promise<Uint8Array> => {
-		const encoding = keyCodecEl.current?.getEncoding() || TextEncoding.Base64;
-		return await textCodecor.decode(encoding, form.getFieldValue("privateKey"));
-	};
-
-	const _derivePublicKey = async (
-		key: Uint8Array | null
-	): Promise<Uint8Array> => {
-		if (key == null) {
-			key = await _getPrivateKey();
-		}
-
-		const encoding: PkcsEncoding =
-			form.getFieldValue("encoding") || Pkcs8Encoding.PKCS8_PEM;
-
-		return await invoke<Uint8Array>("derive_rsa", {
-			key: key,
-			...PkcsEncodings[encoding],
-		});
-	};
 	const derivePublicKey = async () => {
 		try {
-			const publicKeyBytes = await _derivePublicKey(null);
-			const encoding = keyCodecEl.current?.getEncoding() || TextEncoding.Base64;
-			const publicKey = await textCodecor.encode(encoding, publicKeyBytes);
-			form.setFieldsValue({ publicKey });
+			const { privateKey, pkcsFormat, encoding } = form.getFieldsValue([
+				"privateKey",
+				"pkcsFormat",
+				"encoding",
+			]);
+			const pkcs = PkcsFormats[pkcsFormat as PkcsFormat];
+			pkcs.setEncoding(encoding as TextEncoding);
+			return await invoke<Uint8Array>("derive_rsa", {
+				key: privateKey,
+				...pkcs,
+			});
 		} catch (error) {
 			console.log(error);
 		}
@@ -97,22 +78,21 @@ const RsaDeriveKey = () => {
 	const generatePrivateKey = async () => {
 		setGenerating(true);
 		try {
-			const encoding = keyCodecEl.current?.getEncoding() || TextEncoding.Base64;
-
-			const data = form.getFieldsValue(["keySize", "textEndocing"]);
-			const pkcsEncoding: PkcsEncoding =
-				form.getFieldValue("pkcsEncoding") || Pkcs8Encoding.PKCS8_PEM;
-
-			const privateKeyBytes = await invoke<Uint8Array>("generate_rsa", {
-				...data,
-				...PkcsEncodings[pkcsEncoding],
-			});
-
-			const publicKeyBytes = await _derivePublicKey(privateKeyBytes);
-			const [publicKey, privateKey] = await Promise.all([
-				textCodecor.encode(encoding, publicKeyBytes),
-				textCodecor.encode(encoding, privateKeyBytes),
+			const { keySize, encoding } = form.getFieldsValue([
+				"keySize",
+				"encoding",
 			]);
+			console.log(form.getFieldsValue(true));
+
+			const pkcsFormat: PkcsFormat = form.getFieldValue("pkcsFormat");
+			console.log(pkcsFormat);
+
+			const pkcs = PkcsFormats[pkcsFormat];
+			pkcs.setEncoding(encoding);
+			const [privateKey, publicKey] = await invoke<string[]>("generate_rsa", {
+				keySize,
+				...pkcs,
+			});
 
 			form.setFieldsValue({
 				publicKey,
@@ -158,28 +138,25 @@ const RsaDeriveKey = () => {
 						vertical
 						style={{ height: keyHeight }}
 					>
-						<Form.Item name="pkcsEncoding" label="pkcsEncoding">
-							<RsaSelectConvert
-								converter={rsaConverter}
+						<Form.Item name="pkcsFormat" label="pkcsFormat">
+							<RsaPkcsSelect
+								converter={rsaPkcsConverter}
 								disabled={generating}
 								style={{
 									minWidth: keyButtonWidth,
 									minHeight: keyButtonHeight,
 								}}
 								getInputs={() =>
-									form.getFieldsValue(["privateKey", "publicKey"])
+									form.getFieldsValue(["privateKey", "publicKey", "encoding"])
 								}
 								setInputs={form.setFieldsValue}
-								ref={rsaConvertEl}
 							/>
 						</Form.Item>
-						<Form.Item name="textEncoding" label="textEncoding">
-							<TextSelectCodec
-								ref={keyCodecEl}
-								callback={rsaConvertEl.current?.setTextEncoding}
-								codecor={textCodecor}
+						<Form.Item name="encoding" label="encoding">
+							<RsaEncodingSelect
+								converter={rsaEncodingConverter}
 								getInputs={() =>
-									form.getFieldsValue(["privateKey", "publicKey"])
+									form.getFieldsValue(["privateKey", "publicKey", "pkcsFormat"])
 								}
 								setInputs={form.setFieldsValue}
 								disabled={generating}

@@ -15,7 +15,7 @@ use tracing::info;
 use crate::{
     add_encryption_trait_impl,
     crypto::EncryptionDto,
-    helper::{
+    utils::{
         common::random_bytes,
         enums::{AesEncryptionPadding, EncryptionMode, TextEncoding},
         errors::{Error, Result},
@@ -235,7 +235,7 @@ mod test {
     use super::generate_aes;
     use crate::{
         crypto::aes::{aes_crypto, generate_iv, AesEncryptoinDto},
-        helper::{
+        utils::{
             common::random_bytes,
             enums::{AesEncryptionPadding, EncryptionMode, TextEncoding},
         },

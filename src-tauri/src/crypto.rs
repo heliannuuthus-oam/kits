@@ -1,4 +1,4 @@
-use crate::helper::{enums::TextEncoding, errors::Result};
+use crate::utils::{enums::TextEncoding, errors::Result};
 
 pub mod aes;
 pub mod curve_25519;

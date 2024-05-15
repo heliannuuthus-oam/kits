@@ -24,12 +24,12 @@ import { TextRadioCodec } from "../../components/codec/TextCodecRadio";
 import { TextSelectCodec } from "../../components/codec/TextCodecSelect";
 import {
 	ConvertRef,
-	Pkcs8Encoding,
-	PkcsEncoding,
-	PkcsEncodings,
-	rsaConverter,
+	Pkcs8Format,
+	PkcsFormat,
+	PkcsFormats,
+	rsaPkcsConverter,
 } from "../../components/converter/converter";
-import { RsaSelectConvert } from "../../components/converter/RsaConvertSelect";
+import { RsaPkcsSelect } from "../../components/rsa/RsaPkcsSelect";
 
 export const DefaultTextArea = ({ style, ...props }: TextAreaProps) => {
 	return <TextArea {...props} style={{ resize: "none", ...style }}></TextArea>;
@@ -103,7 +103,7 @@ type RsaEncryptionForm = {
 	mgfDigest?: Digest;
 	input: string | null;
 	output: string | null;
-	encoding: PkcsEncoding;
+	encoding: PkcsFormat;
 };
 
 const initialValues: RsaEncryptionForm = {
@@ -114,7 +114,7 @@ const initialValues: RsaEncryptionForm = {
 	mgfDigest: Digest.Sha256,
 	input: null,
 	output: null,
-	encoding: Pkcs8Encoding.PKCS8_PEM,
+	encoding: Pkcs8Format.PKCS8_PEM,
 };
 
 const size = "middle";
@@ -175,12 +175,12 @@ const RsaEncryption = () => {
 			key = await _getPrivateKey();
 		}
 
-		const encoding: PkcsEncoding =
-			form.getFieldValue("encoding") || Pkcs8Encoding.PKCS8_PEM;
+		const encoding: PkcsFormat =
+			form.getFieldValue("encoding") || Pkcs8Format.PKCS8_PEM;
 
 		return await invoke<Uint8Array>("derive_rsa", {
 			key: key,
-			...PkcsEncodings[encoding],
+			...PkcsFormats[encoding],
 		});
 	};
 	const derivePublicKey = async () => {
@@ -198,11 +198,11 @@ const RsaEncryption = () => {
 		try {
 			const encoding = keyCodecEl.current?.getEncoding() || TextEncoding.Base64;
 
-			const pkcsEncoding: PkcsEncoding =
-				form.getFieldValue("encoding") || Pkcs8Encoding.PKCS8_PEM;
+			const pkcsEncoding: PkcsFormat =
+				form.getFieldValue("encoding") || Pkcs8Format.PKCS8_PEM;
 			const privateKeyBytes = await invoke<Uint8Array>("generate_rsa", {
 				keySize: keySize,
-				...PkcsEncodings[pkcsEncoding],
+				...PkcsFormats[pkcsEncoding],
 			});
 
 			const publicKeyBytes = await _derivePublicKey(privateKeyBytes);
@@ -229,8 +229,8 @@ const RsaEncryption = () => {
 				inputCodecEl.current?.getEncoding() || TextEncoding.UTF8,
 				parameters.input || ""
 			);
-			const pkcsEncoding: PkcsEncoding =
-				form.getFieldValue("encoding") || Pkcs8Encoding.PKCS8_PEM;
+			const pkcsEncoding: PkcsFormat =
+				form.getFieldValue("encoding") || Pkcs8Format.PKCS8_PEM;
 			let output;
 			if (operation === "encrypt") {
 				const key = await textCodecor.decode(
@@ -243,7 +243,7 @@ const RsaEncryption = () => {
 						...parameters,
 						input,
 						key: key,
-						...PkcsEncodings[pkcsEncoding],
+						...PkcsFormats[pkcsEncoding],
 					},
 				});
 			} else {
@@ -257,7 +257,7 @@ const RsaEncryption = () => {
 						...parameters,
 						input,
 						key: key,
-						...PkcsEncodings[pkcsEncoding],
+						...PkcsFormats[pkcsEncoding],
 					},
 				});
 			}
@@ -407,8 +407,8 @@ const RsaEncryption = () => {
 							style={{ height: keyHeight }}
 						>
 							<Form.Item noStyle name="encoding">
-								<RsaSelectConvert
-									converter={rsaConverter}
+								<RsaPkcsSelect
+									converter={rsaPkcsConverter}
 									disabled={generating}
 									style={{
 										minWidth: keyButtonWidth,
@@ -417,7 +417,6 @@ const RsaEncryption = () => {
 									getInputs={() =>
 										form.getFieldsValue(["privateKey", "publicKey"])
 									}
-									textEncoding={TextEncoding.Base64}
 									setInputs={form.setFieldsValue}
 									ref={rsaConvertEl}
 								/>

@@ -2,11 +2,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use anyhow::Context;
-use helper::errors::Result;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
+use utils::errors::Result;
 
 mod crypto;
-mod helper;
+mod utils;
 
 fn main() -> Result<()> {
     let file_appender = tracing_appender::rolling::daily("./log", "app.log");
@@ -46,15 +46,15 @@ fn main() -> Result<()> {
             crypto::rsa::decrypt_rsa,
             crypto::ecc::ecies,
             // format
-            crypto::rsa::ras_key_tansfer,
-            helper::codec::base64_encode,
-            helper::codec::base64_decode,
-            helper::codec::hex_encode,
-            helper::codec::hex_decode,
-            helper::codec::string_encode,
-            helper::codec::string_decode,
-            helper::codec::pkcs8_sec1_converter,
-            helper::codec::pkcs8_pkcs1_converter,
+            crypto::rsa::rsa_transfer_key,
+            utils::codec::base64_encode,
+            utils::codec::base64_decode,
+            utils::codec::hex_encode,
+            utils::codec::hex_decode,
+            utils::codec::string_encode,
+            utils::codec::string_decode,
+            utils::codec::pkcs8_sec1_converter,
+            utils::codec::pkcs8_pkcs1_converter,
         ])
         .run(tauri::generate_context!())
         .context("error while running tauri application")?;

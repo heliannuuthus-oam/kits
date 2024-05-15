@@ -5,7 +5,7 @@ use rsa::{RsaPrivateKey, RsaPublicKey};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
-use crate::helper::{
+use crate::utils::{
     codec::{
         pkcs8_pkcs1_converter_inner, private_bytes_to_pkcs1,
         private_bytes_to_pkcs8, private_pkcs1_to_bytes, private_pkcs8_to_bytes,
@@ -114,17 +114,21 @@ pub async fn generate_rsa(
     pkcs: Pkcs,
     format: KeyFormat,
     encoding: TextEncoding,
-) -> Result<String> {
+) -> Result<KeyTuple> {
     info!(
-        "generate rsa private key, key_size: {}, pkcs_encoding: {:?}, \
-         encoding: {:?}",
+        "generate rsa key, key_size: {}, pkcs_encoding: {:?}, encoding: {:?}",
         key_size, pkcs, format
     );
     let mut rng: rand::prelude::ThreadRng = rand::thread_rng();
-    let priv_key = RsaPrivateKey::new(&mut rng, key_size)
-        .expect("failed to generate rsa key");
-    let private_key_bytes = private_key_to_bytes(priv_key, pkcs, format)?;
-    encoding.encode(&private_key_bytes)
+    let private_key = RsaPrivateKey::new(&mut rng, key_size)
+        .expect("generate rsa key failed");
+    let public_key = private_key.to_public_key();
+    let private_key_bytes = private_key_to_bytes(private_key, pkcs, format)?;
+    let public_key_bytes = public_key_to_bytes(public_key, pkcs, format)?;
+    Ok(KeyTuple::new(
+        encoding.encode(&private_key_bytes)?,
+        encoding.encode(&public_key_bytes)?,
+    ))
 }
 
 #[tauri::command]
@@ -175,7 +179,7 @@ pub async fn decrypt_rsa(data: RsaEncryptionDto) -> Result<String> {
 }
 
 #[tauri::command]
-pub async fn ras_key_tansfer(
+pub async fn rsa_transfer_key(
     private_key: Option<String>,
     public_key: Option<String>,
     from: PkcsDto,
@@ -208,7 +212,7 @@ pub async fn ras_key_tansfer(
                 key_bytes.as_slice(),
                 from,
                 to,
-                false,
+                true,
             )?;
             to.encoding.encode(&public_bytes)?
         } else {
