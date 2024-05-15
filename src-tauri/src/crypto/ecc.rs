@@ -1,5 +1,8 @@
 use anyhow::Context;
-use elliptic_curve::AffinePoint;
+use elliptic_curve::{
+    sec1::{EncodedPoint, ToEncodedPoint},
+    AffinePoint,
+};
 use p256::NistP256;
 use pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey};
 use serde::{Deserialize, Serialize};
@@ -164,9 +167,9 @@ where
         let receiver_secret_key =
             elliptic_curve::SecretKey::<C>::random(&mut rng);
         let receiver_public_key = receiver_secret_key.public_key();
-        let receiver_public_key_bytes = receiver_public_key.to_sec1_bytes();
-        result.push(receiver_public_key_bytes.len() as u8);
-        result.extend_from_slice(&receiver_public_key_bytes);
+        let receiver_public_key_bytes =
+            receiver_public_key.to_encoded_point(true);
+        result.extend_from_slice(receiver_public_key_bytes.as_bytes());
         let public_key = import_ecc_public_key::<C>(key, format)?;
         let shared_secret = elliptic_curve::ecdh::diffie_hellman(
             receiver_secret_key.to_nonzero_scalar(),
@@ -177,7 +180,7 @@ where
             shared_secret.raw_secret_bytes(),
             SALT.as_bytes(),
             210_000,
-        );  
+        );
         let (secret, iv) = pkf_key.split_at(32);
         let encrypted = crypto::aes::encrypt_or_decrypt_aes(
             EncryptionMode::Gcm,
@@ -191,18 +194,20 @@ where
         result.extend_from_slice(&encrypted);
         result
     } else {
-        let (public_key_len, input) = input.split_at(1);
-        let public_key_len = public_key_len[0] as usize;
+        let private_key = import_ecc_private_key::<C>(key, pkcs, format)?;
+        let public_key = private_key.public_key();
+        let public_key_encode_point = public_key.to_encoded_point(true);
+        let public_key_len = public_key_encode_point.len();
         let mut receiver_public_secret = Vec::with_capacity(public_key_len);
         let (receiver_public_secret_bytes, input) =
             input.split_at(public_key_len);
         receiver_public_secret.extend_from_slice(receiver_public_secret_bytes);
-        let private_key = import_ecc_private_key::<C>(key, pkcs, format)?;
+        let receiver_public_key_ep =
+            EncodedPoint::<C>::from_bytes(receiver_public_secret)
+                .context("informat receiver key".to_string())?;
         let receiver_public_secret =
-            elliptic_curve::PublicKey::<C>::from_sec1_bytes(
-                &receiver_public_secret,
-            )
-            .context("build receiver secret failed")?;
+            elliptic_curve::PublicKey::<C>::try_from(&receiver_public_key_ep)
+                .context("build receiver key failed")?;
         let shared_secret = elliptic_curve::ecdh::diffie_hellman(
             private_key.to_nonzero_scalar(),
             receiver_public_secret.as_affine(),
@@ -292,7 +297,7 @@ where
 
 fn import_ecc_public_key<C>(
     input: &[u8],
-    from: KeyFormat,
+    format: KeyFormat,
 ) -> Result<elliptic_curve::PublicKey<C>>
 where
     C: elliptic_curve::Curve,
@@ -301,7 +306,7 @@ where
         + elliptic_curve::sec1::ToEncodedPoint<C>,
     elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
 {
-    Ok(match from {
+    Ok(match format {
         KeyFormat::Pem => {
             let public_key_str = String::from_utf8(input.to_vec())
                 .context("informal ecc public key")?;
@@ -412,17 +417,18 @@ mod test {
                 for format in [KeyFormat::Pem, KeyFormat::Der] {
                     let key = generate_ecc(curve_name, pkcs, format, encoding)
                         .unwrap();
+                    info!("secret: {}, key: {}", key.0, key.1);
                     let plaintext = "plaintext";
                     let ciphertext = ecies(EciesDto {
                         curve_name,
-                        key: key.0,
+                        key: key.1,
                         key_encoding: encoding,
                         input: plaintext.to_string(),
                         input_encoding: TextEncoding::Utf8,
                         output_encoding: encoding,
                         pkcs,
-                        key_format: format,
                         encryption_alg: EciesEncryptionAlgorithm::Aes256Gcm,
+                        key_format: format,
                         for_encryption: true,
                     })
                     .unwrap();
@@ -430,7 +436,7 @@ mod test {
                     assert_eq!(
                         ecies(EciesDto {
                             curve_name,
-                            key: key.1,
+                            key: key.0,
                             key_encoding: encoding,
                             input: ciphertext,
                             input_encoding: encoding,
@@ -438,7 +444,7 @@ mod test {
                             pkcs,
                             key_format: format,
                             encryption_alg: EciesEncryptionAlgorithm::Aes256Gcm,
-                            for_encryption: true,
+                            for_encryption: false,
                         })
                         .unwrap(),
                         plaintext
