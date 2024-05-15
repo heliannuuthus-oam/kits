@@ -1,5 +1,5 @@
 import { Select, message } from "antd";
-import { forwardRef, useState } from "react";
+import { ForwardedRef, forwardRef, useState } from "react";
 import {
 	ConvertRef,
 	PkcsFormat,
@@ -9,14 +9,17 @@ import {
 import { ConvertSelectProps } from "./converter";
 import { TextEncoding } from "../codec/codec";
 
-function ConvertSelectInner<T extends PkcsFormat>({
-	converter,
-	getInputs,
-	setInputs,
-	value,
-	onChange,
-	...props
-}: ConvertSelectProps<T, PkcsEncodingProps>) {
+function ConvertSelectInner<T extends PkcsFormat>(
+	{
+		converter,
+		getInputs,
+		setInputs,
+		value,
+		onChange,
+		...props
+	}: ConvertSelectProps<T, PkcsEncodingProps>,
+	_ref: ForwardedRef<ConvertRef>
+) {
 	const [pkcsFormat, setPkcsFormat] = useState<T>(props.defaultValue);
 	const [messageApi, contextHolder] = message.useMessage({
 		maxCount: 1,
@@ -24,18 +27,18 @@ function ConvertSelectInner<T extends PkcsFormat>({
 
 	const selectEncoding = async (val: T) => {
 		const { privateKey, publicKey, encoding } = getInputs();
-
-		const fromPkcs = PkcsFormats[pkcsFormat];
-		const toPkcs = PkcsFormats[val];
-
+		const { pkcs: fromPkcs, format: fromFormat } =
+			PkcsFormats[pkcsFormat as PkcsFormat];
+		const { pkcs: toPkcs, format: toFormat } = PkcsFormats[val];
+		const fromPkcsEncoding = new PkcsEncodingProps(fromPkcs, fromFormat);
+		const toPkcsEncoding = new PkcsEncodingProps(toPkcs, toFormat);
 		try {
 			const output = await converter.convert(
 				privateKey as string,
 				publicKey as string,
-				fromPkcs.setEncoding(encoding as TextEncoding),
-				toPkcs.setEncoding(encoding as TextEncoding)
+				fromPkcsEncoding.setEncoding(encoding as TextEncoding),
+				toPkcsEncoding.setEncoding(encoding as TextEncoding)
 			);
-
 			setInputs({ privateKey: output[0], publicKey: output[1] });
 			setPkcsFormat(val);
 			onChange?.(val);

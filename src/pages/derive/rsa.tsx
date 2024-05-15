@@ -67,10 +67,11 @@ const RsaDeriveKey = () => {
 			]);
 			const pkcs = PkcsFormats[pkcsFormat as PkcsFormat];
 			pkcs.setEncoding(encoding as TextEncoding);
-			return await invoke<Uint8Array>("derive_rsa", {
+			const publicKey = await invoke<string>("derive_rsa", {
 				key: privateKey,
 				...pkcs,
 			});
+			form.setFieldsValue({ publicKey });
 		} catch (error) {
 			console.log(error);
 		}
@@ -108,7 +109,7 @@ const RsaDeriveKey = () => {
 			form={form}
 			initialValues={initFormValue}
 			wrapperCol={{ span: 24 }}
-			style={{ padding: "0 24px" }}
+			style={{ padding: "24px" }}
 			layout="vertical"
 			colon={true}
 			validateTrigger="onBlur"
@@ -164,7 +165,6 @@ const RsaDeriveKey = () => {
 									minWidth: keyButtonWidth,
 									minHeight: keyButtonHeight,
 								}}
-								defaultValue={TextEncoding.UTF8}
 							/>
 						</Form.Item>
 						<Button

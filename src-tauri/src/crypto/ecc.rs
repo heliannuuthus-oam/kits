@@ -7,10 +7,12 @@ use p256::NistP256;
 use pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey};
 use serde::{Deserialize, Serialize};
 use spki::DecodePublicKey;
+use tracing::info;
 
 use crate::{
     crypto::{self, kdf::SALT},
     utils::{
+        codec::{pkcs8_sec1_converter, PkcsDto},
         common::KeyTuple,
         enums::{
             AesEncryptionPadding, EccCurveName, EciesEncryptionAlgorithm,
@@ -41,6 +43,11 @@ pub fn generate_ecc(
     format: KeyFormat,
     encoding: TextEncoding,
 ) -> Result<KeyTuple> {
+    info!(
+        "generate ecc key, curve_name: {:?}, pkcs: {:?}, format: {:?}, \
+         encoding: {:?}",
+        curve_name, pkcs, format, encoding
+    );
     let (private_key_bytes, public_key_bytes) = match curve_name {
         EccCurveName::NistP256 => generate_ecc_key::<NistP256>(pkcs, format),
         EccCurveName::NistP384 => {
@@ -100,6 +107,54 @@ where
 {
     let ecc_private_key = import_ecc_private_key::<C>(input, pkcs, format)?;
     export_ecc_public_key(ecc_private_key.public_key(), format)
+}
+
+#[tauri::command]
+pub async fn ecc_transfer_key(
+    curve_name: EccCurveName,
+    private_key: Option<String>,
+    public_key: Option<String>,
+    from: PkcsDto,
+    to: PkcsDto,
+) -> Result<KeyTuple> {
+    info!(
+        "ecc key format transfer, curve_name: {:?}, {:?} to {:?}. \
+         private->{}, public->{}",
+        curve_name,
+        from,
+        to,
+        private_key.is_some(),
+        public_key.is_some()
+    );
+
+    Ok(KeyTuple::new(
+        if let Some(key) = private_key {
+            let key_bytes = from.encoding.decode(&key)?;
+            let private_bytes = pkcs8_sec1_converter(
+                curve_name,
+                key_bytes.as_slice(),
+                from,
+                to,
+                false,
+            )?;
+            to.encoding.encode(&private_bytes)?
+        } else {
+            "".to_string()
+        },
+        if let Some(key) = public_key {
+            let key_bytes = from.encoding.decode(&key)?;
+            let public_bytes = pkcs8_sec1_converter(
+                curve_name,
+                key_bytes.as_slice(),
+                from,
+                to,
+                true,
+            )?;
+            to.encoding.encode(&public_bytes)?
+        } else {
+            "".to_string()
+        },
+    ))
 }
 
 #[tauri::command]

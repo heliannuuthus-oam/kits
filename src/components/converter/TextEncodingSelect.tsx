@@ -1,17 +1,20 @@
 import { Select, message } from "antd";
-import { forwardRef, useState } from "react";
+import { ForwardedRef, forwardRef, useState } from "react";
 import { ConvertRef } from "./converter";
 import { ConvertSelectProps } from "./converter";
 import { TextEncoding } from "../codec/codec";
 
-function ConvertSelectInner({
-	converter,
-	getInputs,
-	setInputs,
-	value,
-	onChange,
-	...props
-}: ConvertSelectProps<TextEncoding, TextEncoding>) {
+function ConvertSelectInner(
+	{
+		converter,
+		getInputs,
+		setInputs,
+		value,
+		onChange,
+		...props
+	}: ConvertSelectProps<TextEncoding, TextEncoding>,
+	_ref: ForwardedRef<ConvertRef>
+) {
 	const [encoding, setEncoding] = useState<TextEncoding>(props.defaultValue);
 	const [messageApi, contextHolder] = message.useMessage({
 		maxCount: 1,

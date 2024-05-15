@@ -3,25 +3,12 @@ import { RadioGroupProps, SelectProps } from "antd";
 import { TextEncoding } from "../codec/codec";
 
 export abstract class Converter<T> {
-	async defaultConvert(
-		privateKey: string,
-		publicKey: string,
-		from: T,
-		to: T
-	): Promise<string[]> {
-		if (from === to) {
-			return new Promise<string[]>((resovle, _) => {
-				resovle([privateKey, publicKey]);
-			});
-		}
-		return this.convert(privateKey, publicKey, from, to);
-	}
-
 	abstract convert(
 		privateKey: string,
 		publicKey: string,
 		from: T,
-		to: T
+		to: T,
+		params?: Record<string, unknown>
 	): Promise<string[]>;
 }
 
@@ -50,6 +37,15 @@ export enum CurveName {
 	NIST_P521 = "nistp521",
 	Secp256k1 = "secp256k1",
 }
+
+export const curveNames: SelectProps["options"] = (
+	Object.keys(CurveName) as Array<keyof typeof CurveName>
+).map((key) => {
+	return {
+		value: CurveName[key],
+		label: <span>{CurveName[key].toString()}</span>,
+	};
+});
 
 export enum Pkcs1Format {
 	PKCS1_PEM = "pkcs1_pem",
@@ -150,23 +146,24 @@ export class RsaPkcsConverter extends Converter<PkcsEncodingProps> {
 }
 
 export class EccPkcsConverter extends Converter<PkcsEncodingProps> {
-	public curveName: CurveName = CurveName.NIST_P256;
-	setCurveName(curveName: CurveName) {
-		this.curveName = curveName;
-	}
 	async convert(
 		privateKey: string,
 		publicKey: string,
 		from: PkcsEncodingProps,
-		to: PkcsEncodingProps
+		to: PkcsEncodingProps,
+		params?: Record<string, unknown>
 	): Promise<string[]> {
+		const curveName =
+			(params?.["curveName"] as CurveName) || CurveName.Secp256k1;
+		console.log(params);
+
 		switch (true) {
 			case from.pkcs === Pkcs.Pkcs8 && to.pkcs === Pkcs.Sec1:
 			case from.pkcs === Pkcs.Sec1 && to.pkcs === Pkcs.Pkcs8:
 			case from.pkcs === Pkcs.Pkcs8 && to.pkcs === Pkcs.Pkcs8:
 			case from.pkcs === Pkcs.Sec1 && to.pkcs === Pkcs.Sec1:
 				return await invoke<string[]>("ecc_transfer_key", {
-					curveName: this.curveName,
+					curveName,
 					privateKey,
 					publicKey,
 					from,
@@ -197,18 +194,18 @@ export class RsaEncodingConverter extends Converter<PkcsEncodingProps> {
 }
 
 export class EccEncodingConverter extends Converter<PkcsEncodingProps> {
-	public curveName: CurveName = CurveName.NIST_P256;
-	setCurveName(curveName: CurveName) {
-		this.curveName = curveName;
-	}
 	async convert(
 		privateKey: string,
 		publicKey: string,
 		from: PkcsEncodingProps,
-		to: PkcsEncodingProps
+		to: PkcsEncodingProps,
+		params?: Record<string, unknown>
 	): Promise<string[]> {
+		const curveName =
+			(params?.["curveName"] as CurveName) || CurveName.Secp256k1;
+		console.log(params);
 		return await invoke<string[]>("ecc_transfer_key", {
-			curveName: this.curveName,
+			curveName,
 			privateKey,
 			publicKey,
 			from,

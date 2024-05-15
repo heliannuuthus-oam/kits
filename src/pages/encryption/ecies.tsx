@@ -28,7 +28,7 @@ import {
 	ConvertRef,
 	PkcsFormat,
 } from "../../components/converter/converter";
-import { EccSelectConvert } from "../../components/ecc/EccConvertSelect";
+import { EccPkcsSelect } from "../../components/ecc/EccPkcsSelect";
 
 const DefaultTextArea = ({ style, ...props }: TextAreaProps) => {
 	return <TextArea {...props} style={{ resize: "none", ...style }}></TextArea>;
@@ -206,7 +206,7 @@ const EciesEncryption = () => {
 							style={{ height: keyHeight }}
 						>
 							<Form.Item noStyle name="encoding">
-								<EccSelectConvert
+								<EccPkcsSelect
 									converter={eccPkcsConverter}
 									disabled={generating}
 									style={{
@@ -249,7 +249,6 @@ const EciesEncryption = () => {
 								disabled={generating}
 								value={curveName}
 								onChange={(value) => {
-									eccPkcsConverter.setCurveName(value);
 									setCurveName(value);
 								}}
 								options={curveNames}
