@@ -3,12 +3,16 @@ use base64ct::Encoding;
 use pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey};
 use serde::{Deserialize, Serialize};
 use spki::DecodePublicKey;
-use tracing::debug;
+use tracing::{debug, info};
 
 use crate::{
     add_encryption_trait_impl,
     crypto::{self, kdf::SALT, EncryptionDto},
     utils::{
+        codec::{
+            private_bytes_to_pkcs8, private_pkcs8_to_bytes,
+            public_bytes_to_pkcs8, public_pkcs8_to_bytes, PkcsDto,
+        },
         common::KeyTuple,
         enums::{
             AesEncryptionPadding, EciesEncryptionAlgorithm, EdwardsCurveName,
@@ -73,6 +77,66 @@ pub fn ecies_edwards(data: EciesEdwardsDto) -> Result<String> {
         ),
     }?;
     Ok(output_encoding.encode(&output)?)
+}
+
+#[tauri::command]
+pub fn transfer_edwards_key(
+    curve_name: EdwardsCurveName,
+    private_key: Option<String>,
+    public_key: Option<String>,
+    from: PkcsDto,
+    to: PkcsDto,
+) -> Result<KeyTuple> {
+    info!(
+        "edwards key format transfer, curve_name: {:?}, {:?} to {:?}. \
+         private->{}, public->{}",
+        curve_name,
+        from,
+        to,
+        private_key.is_some(),
+        public_key.is_some()
+    );
+
+    let mut tuple = KeyTuple::empty();
+
+    tuple
+        .private(if let Some(key) = private_key {
+            if !key.trim().is_empty() {
+                let key_bytes = from.encoding.decode(&key)?;
+                let private_bytes = private_bytes_to_pkcs8::<
+                    ed25519_dalek::SigningKey,
+                >(&key_bytes, from.format)
+                .and_then(|key| {
+                    private_pkcs8_to_bytes::<ed25519_dalek::SigningKey>(
+                        key, to.format,
+                    )
+                })?;
+                Some(to.encoding.encode(&private_bytes)?)
+            } else {
+                None
+            }
+        } else {
+            None
+        })
+        .public(if let Some(key) = public_key {
+            if !key.trim().is_empty() {
+                let key_bytes = from.encoding.decode(&key)?;
+                let public_bytes = public_bytes_to_pkcs8::<
+                    ed25519_dalek::VerifyingKey,
+                >(&key_bytes, from.format)
+                .and_then(|key| {
+                    public_pkcs8_to_bytes::<ed25519_dalek::VerifyingKey>(
+                        key, to.format,
+                    )
+                })?;
+                Some(to.encoding.encode(&public_bytes)?)
+            } else {
+                None
+            }
+        } else {
+            None
+        });
+    Ok(tuple)
 }
 
 pub(crate) fn generate_curve_25519_key(

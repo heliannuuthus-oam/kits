@@ -24,7 +24,7 @@ import {
 	Pkcs8Format,
 	PkcsFormats,
 	eccPkcsConverter,
-	CurveName,
+	EccCurveName,
 	ConvertRef,
 	PkcsFormat,
 } from "../../components/converter/converter";
@@ -49,11 +49,11 @@ const initialValues: EciesEncryptionForm = {
 };
 
 const curveNames: SelectProps["options"] = (
-	Object.keys(CurveName) as Array<keyof typeof CurveName>
+	Object.keys(EccCurveName) as Array<keyof typeof EccCurveName>
 ).map((key) => {
 	return {
-		value: CurveName[key],
-		label: <span>{CurveName[key].toString()}</span>,
+		value: EccCurveName[key],
+		label: <span>{EccCurveName[key].toString()}</span>,
 	};
 });
 
@@ -63,7 +63,9 @@ const keyButtonHeight = 32;
 const keyButtonWidth = 120;
 const EciesEncryption = () => {
 	const [form] = Form.useForm<EciesEncryptionForm>();
-	const [curveName, setCurveName] = useState<CurveName>(CurveName.NIST_P256);
+	const [curveName, setCurveName] = useState<EccCurveName>(
+		EccCurveName.NIST_P256
+	);
 	const [generating, setGenerating] = useState<boolean>(false);
 	const pkiKeyCodecEl = useRef<ConvertRef>(null);
 	const keyCodecEl = useRef<TextCodecRef>(null);

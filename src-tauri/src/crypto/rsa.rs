@@ -172,7 +172,7 @@ pub async fn crypto_rsa(data: RsaEncryptionDto) -> Result<String> {
 }
 
 #[tauri::command]
-pub async fn rsa_transfer_key(
+pub async fn transfer_rsa_key(
     private_key: Option<String>,
     public_key: Option<String>,
     from: PkcsDto,

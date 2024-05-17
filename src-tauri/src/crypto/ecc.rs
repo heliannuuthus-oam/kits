@@ -122,7 +122,7 @@ where
 }
 
 #[tauri::command]
-pub async fn ecc_transfer_key(
+pub async fn transfer_ecc_key(
     curve_name: EccCurveName,
     private_key: Option<String>,
     public_key: Option<String>,

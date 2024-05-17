@@ -14,11 +14,11 @@ import { useState } from "react";
 import { TextEncoding } from "../../components/codec/codec";
 import { useForm } from "antd/es/form/Form";
 import {
-	CurveName,
+	EccCurveName,
 	Pkcs8Format,
 	PkcsFormat,
 	PkcsFormats,
-	curveNames,
+	eccCurveNames,
 	eccEncodingConverter,
 	eccPkcsConverter,
 } from "../../components/converter/converter";
@@ -35,7 +35,7 @@ export type EccDeriveKeyForm = {
 	publicKey: string;
 	pkcsFormat: PkcsFormat;
 	encoding: TextEncoding;
-	curveName: CurveName;
+	curveName: EccCurveName;
 };
 
 export const EccDeriveKey = () => {
@@ -46,7 +46,7 @@ export const EccDeriveKey = () => {
 		publicKey: "",
 		pkcsFormat: Pkcs8Format.PKCS8_PEM,
 		encoding: TextEncoding.UTF8,
-		curveName: CurveName.Secp256k1,
+		curveName: EccCurveName.Secp256k1,
 	};
 
 	const keyValidator: FormRule[] = [
@@ -204,7 +204,7 @@ export const EccDeriveKey = () => {
 											<Form.Item name="curveName" label="curve name">
 												<Select
 													disabled={generating}
-													options={curveNames}
+													options={eccCurveNames}
 													style={{
 														minWidth: keyButtonWidth,
 														minHeight: keyButtonHeight,

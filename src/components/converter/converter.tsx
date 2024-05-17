@@ -31,19 +31,32 @@ export interface ConvertSelectProps<T, E> extends SelectProps {
 	onChange?: (value: T) => void;
 }
 
-export enum CurveName {
+export enum EccCurveName {
 	NIST_P256 = "nistp256",
 	NIST_P384 = "nistp384",
 	NIST_P521 = "nistp521",
 	Secp256k1 = "secp256k1",
 }
 
-export const curveNames: SelectProps["options"] = (
-	Object.keys(CurveName) as Array<keyof typeof CurveName>
+export enum EdwardsCurveName {
+	Curve25519 = "curve25519",
+}
+
+export const eccCurveNames: SelectProps["options"] = (
+	Object.keys(EccCurveName) as Array<keyof typeof EccCurveName>
 ).map((key) => {
 	return {
-		value: CurveName[key],
-		label: <span>{CurveName[key].toString()}</span>,
+		value: EccCurveName[key],
+		label: <span>{EccCurveName[key].toString()}</span>,
+	};
+});
+
+export const edwardsCurveNames: SelectProps["options"] = (
+	Object.keys(EdwardsCurveName) as Array<keyof typeof EdwardsCurveName>
+).map((key) => {
+	return {
+		value: EdwardsCurveName[key],
+		label: <span>{EdwardsCurveName[key].toString()}</span>,
 	};
 });
 
@@ -145,7 +158,7 @@ export class RsaPkcsConverter extends Converter<PkcsEncodingProps> {
 	}
 }
 
-export class EccPkcsConverter extends Converter<PkcsEncodingProps> {
+export class EdwardsPkcsConverter extends Converter<PkcsEncodingProps> {
 	async convert(
 		privateKey: string,
 		publicKey: string,
@@ -154,26 +167,15 @@ export class EccPkcsConverter extends Converter<PkcsEncodingProps> {
 		params?: Record<string, unknown>
 	): Promise<string[]> {
 		const curveName =
-			(params?.["curveName"] as CurveName) || CurveName.Secp256k1;
-		console.log(params);
-
-		switch (true) {
-			case from.pkcs === Pkcs.Pkcs8 && to.pkcs === Pkcs.Sec1:
-			case from.pkcs === Pkcs.Sec1 && to.pkcs === Pkcs.Pkcs8:
-			case from.pkcs === Pkcs.Pkcs8 && to.pkcs === Pkcs.Pkcs8:
-			case from.pkcs === Pkcs.Sec1 && to.pkcs === Pkcs.Sec1:
-				return await invoke<string[]>("ecc_transfer_key", {
-					curveName,
-					privateKey,
-					publicKey,
-					from,
-					to,
-				});
-			default:
-				throw new Error(
-					`unsupported pkcs: ${from.pkcs} encoding: ${from.encoding} convert pkcs: ${to.pkcs} encoding: ${to.encoding}`
-				);
-		}
+			(params?.["curveName"] as EdwardsCurveName) ||
+			EdwardsCurveName.Curve25519;
+		return await invoke<string[]>("transfer_edwards_key", {
+			curveName,
+			privateKey,
+			publicKey,
+			from,
+			to,
+		});
 	}
 }
 
@@ -184,7 +186,7 @@ export class RsaEncodingConverter extends Converter<PkcsEncodingProps> {
 		from: PkcsEncodingProps,
 		to: PkcsEncodingProps
 	): Promise<string[]> {
-		return await invoke<string[]>("rsa_transfer_key", {
+		return await invoke<string[]>("transfer_rsa_key", {
 			privateKey,
 			publicKey,
 			from,
@@ -202,9 +204,30 @@ export class EccEncodingConverter extends Converter<PkcsEncodingProps> {
 		params?: Record<string, unknown>
 	): Promise<string[]> {
 		const curveName =
-			(params?.["curveName"] as CurveName) || CurveName.Secp256k1;
+			(params?.["curveName"] as EccCurveName) || EccCurveName.Secp256k1;
 		console.log(params);
-		return await invoke<string[]>("ecc_transfer_key", {
+		return await invoke<string[]>("transfer_ecc_key", {
+			curveName,
+			privateKey,
+			publicKey,
+			from,
+			to,
+		});
+	}
+}
+
+export class EdwardsEncodingConverter extends Converter<PkcsEncodingProps> {
+	async convert(
+		privateKey: string,
+		publicKey: string,
+		from: PkcsEncodingProps,
+		to: PkcsEncodingProps,
+		params?: Record<string, unknown>
+	): Promise<string[]> {
+		const curveName =
+			(params?.["curveName"] as EccCurveName) || EccCurveName.Secp256k1;
+		console.log(params);
+		return await invoke<string[]>("transfer_edwards_key", {
 			curveName,
 			privateKey,
 			publicKey,
@@ -214,6 +237,8 @@ export class EccEncodingConverter extends Converter<PkcsEncodingProps> {
 	}
 }
 export const rsaPkcsConverter = new RsaPkcsConverter();
-export const eccPkcsConverter = new EccPkcsConverter();
+export const eccPkcsConverter = new EdwardsPkcsConverter();
+export const edwardPkcsConverter = new EdwardsPkcsConverter();
 export const rsaEncodingConverter = new RsaEncodingConverter();
 export const eccEncodingConverter = new EccEncodingConverter();
+export const edwardsEncodingConverter = new EdwardsEncodingConverter();
