@@ -1,6 +1,7 @@
 import {
 	Button,
 	Col,
+	Collapse,
 	Flex,
 	Form,
 	FormRule,
@@ -31,7 +32,7 @@ const keySizes: SelectProps["options"] = [2048, 3072, 4096].map((bit) => {
 	};
 });
 
-const keyHeight = 700;
+const keyHeight = 418;
 const keyButtonHeight = 32;
 const keyButtonWidth = 120;
 
@@ -115,7 +116,7 @@ const RsaDeriveKey = () => {
 			validateTrigger="onBlur"
 		>
 			<Row justify="space-between" align="top">
-				<Col span={10}>
+				<Col span={9}>
 					<Flex
 						align="center"
 						justify="space-between"
@@ -125,6 +126,15 @@ const RsaDeriveKey = () => {
 							PrivateKey
 						</Typography.Title>
 					</Flex>
+				</Col>
+				<Col offset={2} span={9}>
+					<Flex justify="space-between" style={{ padding: "0 0 24px 0" }}>
+						<Typography.Title level={5} style={{ margin: 0 }}>
+							PublicKey
+						</Typography.Title>
+					</Flex>
+				</Col>
+				<Col span={9}>
 					<Form.Item name="privateKey" rules={keyValidator}>
 						<DefaultTextArea
 							disabled={generating}
@@ -132,41 +142,8 @@ const RsaDeriveKey = () => {
 						/>
 					</Form.Item>
 				</Col>
-				<Col span={4} style={{ padding: "0 15px" }}>
-					<Flex
-						gap={52}
-						justify="center"
-						vertical
-						style={{ height: keyHeight }}
-					>
-						<Form.Item name="pkcsFormat" label="pkcsFormat">
-							<RsaPkcsSelect
-								converter={rsaPkcsConverter}
-								disabled={generating}
-								style={{
-									minWidth: keyButtonWidth,
-									minHeight: keyButtonHeight,
-								}}
-								getInputs={() =>
-									form.getFieldsValue(["privateKey", "publicKey", "encoding"])
-								}
-								setInputs={form.setFieldsValue}
-							/>
-						</Form.Item>
-						<Form.Item name="encoding" label="encoding">
-							<RsaEncodingSelect
-								converter={rsaEncodingConverter}
-								getInputs={() =>
-									form.getFieldsValue(["privateKey", "publicKey", "pkcsFormat"])
-								}
-								setInputs={form.setFieldsValue}
-								disabled={generating}
-								style={{
-									minWidth: keyButtonWidth,
-									minHeight: keyButtonHeight,
-								}}
-							/>
-						</Form.Item>
+				<Col span={6} style={{ padding: "0 15px" }}>
+					<Flex gap={24} justify="space-between" vertical>
 						<Button
 							loading={generating}
 							onClick={derivePublicKey}
@@ -176,14 +153,6 @@ const RsaDeriveKey = () => {
 						>
 							derive
 						</Button>
-						<Form.Item name="keySize" label="keySize">
-							<Select
-								disabled={generating}
-								options={keySizes}
-								style={{ minWidth: keyButtonWidth, minHeight: keyButtonHeight }}
-							/>
-						</Form.Item>
-
 						<Button
 							loading={generating}
 							type="primary"
@@ -192,18 +161,68 @@ const RsaDeriveKey = () => {
 						>
 							generate
 						</Button>
+						<Collapse
+							ghost
+							items={[
+								{
+									key: "higher configuration",
+									label: "configuration",
+									children: (
+										<>
+											<Form.Item name="pkcsFormat" label="pkcs format">
+												<RsaPkcsSelect
+													converter={rsaPkcsConverter}
+													disabled={generating}
+													style={{
+														minWidth: keyButtonWidth,
+														minHeight: keyButtonHeight,
+													}}
+													getInputs={() =>
+														form.getFieldsValue([
+															"privateKey",
+															"publicKey",
+															"encoding",
+														])
+													}
+													setInputs={form.setFieldsValue}
+												/>
+											</Form.Item>
+											<Form.Item name="encoding" label="encoding">
+												<RsaEncodingSelect
+													converter={rsaEncodingConverter}
+													getInputs={() =>
+														form.getFieldsValue([
+															"privateKey",
+															"publicKey",
+															"pkcsFormat",
+														])
+													}
+													setInputs={form.setFieldsValue}
+													disabled={generating}
+													style={{
+														minWidth: keyButtonWidth,
+														minHeight: keyButtonHeight,
+													}}
+												/>
+											</Form.Item>
+											<Form.Item name="keySize" label="key size">
+												<Select
+													disabled={generating}
+													options={keySizes}
+													style={{
+														minWidth: keyButtonWidth,
+														minHeight: keyButtonHeight,
+													}}
+												/>
+											</Form.Item>
+										</>
+									),
+								},
+							]}
+						/>
 					</Flex>
 				</Col>
-				<Col span={10}>
-					<Flex
-						align="center"
-						justify="space-between"
-						style={{ padding: "0 0 24px 0" }}
-					>
-						<Typography.Title level={5} style={{ margin: 0 }}>
-							PublicKey
-						</Typography.Title>
-					</Flex>
+				<Col span={9}>
 					<Form.Item name="publicKey" rules={keyValidator}>
 						<DefaultTextArea
 							disabled={generating}

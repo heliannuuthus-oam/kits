@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use anyhow::Context;
 use elliptic_curve::{
     sec1::{EncodedPoint, ToEncodedPoint},
@@ -10,7 +12,8 @@ use spki::DecodePublicKey;
 use tracing::info;
 
 use crate::{
-    crypto::{self, kdf::SALT},
+    add_encryption_trait_impl,
+    crypto::{self, kdf::SALT, EncryptionDto},
     utils::{
         codec::{pkcs8_sec1_converter, PkcsDto},
         common::KeyTuple,
@@ -22,18 +25,27 @@ use crate::{
     },
 };
 
-#[derive(Serialize, Deserialize)]
-pub struct EciesDto {
-    pub curve_name: EccCurveName,
-    pub key: String,
-    pub key_encoding: TextEncoding,
-    pub input: String,
-    pub input_encoding: TextEncoding,
-    pub output_encoding: TextEncoding,
-    pub pkcs: Pkcs,
-    pub key_format: KeyFormat,
-    pub encryption_alg: EciesEncryptionAlgorithm,
-    pub for_encryption: bool,
+add_encryption_trait_impl!(EciesDto {
+    curve_name: EccCurveName,
+    pkcs: Pkcs,
+    key_format: KeyFormat,
+    encryption_alg: EciesEncryptionAlgorithm,
+    for_encryption: bool
+});
+
+impl Debug for EciesDto {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EciesDto")
+            .field("input_encoding", &self.input_encoding)
+            .field("key_encoding", &self.key_encoding)
+            .field("output_encoding", &self.output_encoding)
+            .field("curve_name", &self.curve_name)
+            .field("pkcs", &self.pkcs)
+            .field("key_format", &self.key_format)
+            .field("encryption_alg", &self.encryption_alg)
+            .field("for_encryption", &self.for_encryption)
+            .finish()
+    }
 }
 
 #[tauri::command]
@@ -48,7 +60,7 @@ pub fn generate_ecc(
          encoding: {:?}",
         curve_name, pkcs, format, encoding
     );
-    let (private_key_bytes, public_key_bytes) = match curve_name {
+    let (private_key_bytes, public_key_bytes) = (match curve_name {
         EccCurveName::NistP256 => generate_ecc_key::<NistP256>(pkcs, format),
         EccCurveName::NistP384 => {
             generate_ecc_key::<p384::NistP384>(pkcs, format)
@@ -59,7 +71,7 @@ pub fn generate_ecc(
         EccCurveName::Secp256k1 => {
             generate_ecc_key::<k256::Secp256k1>(pkcs, format)
         }
-    }?;
+    })?;
 
     Ok(KeyTuple::new(
         encoding.encode(&private_key_bytes)?,
@@ -76,7 +88,7 @@ pub fn derive_ecc(
     encoding: TextEncoding,
 ) -> Result<String> {
     let key_bytes = encoding.decode(&input)?;
-    let public_key_bytes = match curve_name {
+    let public_key_bytes = (match curve_name {
         EccCurveName::NistP256 => {
             derive_ecc_inner::<NistP256>(&key_bytes, pkcs, format)
         }
@@ -89,7 +101,7 @@ pub fn derive_ecc(
         EccCurveName::Secp256k1 => {
             derive_ecc_inner::<k256::Secp256k1>(&key_bytes, pkcs, format)
         }
-    }?;
+    })?;
     encoding.encode(&public_key_bytes)
 }
 
@@ -127,75 +139,85 @@ pub async fn ecc_transfer_key(
         public_key.is_some()
     );
 
-    Ok(KeyTuple::new(
-        if let Some(key) = private_key {
-            let key_bytes = from.encoding.decode(&key)?;
-            let private_bytes = pkcs8_sec1_converter(
-                curve_name,
-                key_bytes.as_slice(),
-                from,
-                to,
-                false,
-            )?;
-            to.encoding.encode(&private_bytes)?
+    let mut tuple = KeyTuple::empty();
+
+    tuple
+        .private(if let Some(key) = private_key {
+            if !key.trim().is_empty() {
+                let key_bytes = from.encoding.decode(&key)?;
+                let private_bytes = pkcs8_sec1_converter(
+                    curve_name,
+                    key_bytes.as_slice(),
+                    from,
+                    to,
+                    false,
+                )?;
+                Some(to.encoding.encode(&private_bytes)?)
+            } else {
+                None
+            }
         } else {
-            "".to_string()
-        },
-        if let Some(key) = public_key {
-            let key_bytes = from.encoding.decode(&key)?;
-            let public_bytes = pkcs8_sec1_converter(
-                curve_name,
-                key_bytes.as_slice(),
-                from,
-                to,
-                true,
-            )?;
-            to.encoding.encode(&public_bytes)?
+            None
+        })
+        .public(if let Some(key) = public_key {
+            if !key.trim().is_empty() {
+                let key_bytes = from.encoding.decode(&key)?;
+                let public_bytes = pkcs8_sec1_converter(
+                    curve_name,
+                    key_bytes.as_slice(),
+                    from,
+                    to,
+                    true,
+                )?;
+                Some(to.encoding.encode(&public_bytes)?)
+            } else {
+                None
+            }
         } else {
-            "".to_string()
-        },
-    ))
+            None
+        });
+    Ok(tuple)
 }
 
 #[tauri::command]
 pub fn ecies(data: EciesDto) -> Result<String> {
-    let key_bytes = data.key_encoding.decode(&data.key)?;
-    let plaintext = data.input_encoding.decode(&data.input)?;
+    let key = data.key_encoding.decode(&data.key)?;
+    let input = data.input_encoding.decode(&data.input)?;
 
-    let cipher_bytes = match data.curve_name {
+    let cipher_bytes = (match data.curve_name {
         EccCurveName::NistP256 => ecies_inner::<NistP256>(
-            &plaintext,
-            &key_bytes,
+            &input,
+            &key,
             data.pkcs,
             data.key_format,
             data.encryption_alg,
             data.for_encryption,
         ),
         EccCurveName::NistP384 => ecies_inner::<p384::NistP384>(
-            &plaintext,
-            &key_bytes,
+            &input,
+            &key,
             data.pkcs,
             data.key_format,
             data.encryption_alg,
             data.for_encryption,
         ),
         EccCurveName::NistP521 => ecies_inner::<p521::NistP521>(
-            &plaintext,
-            &key_bytes,
+            &input,
+            &key,
             data.pkcs,
             data.key_format,
             data.encryption_alg,
             data.for_encryption,
         ),
         EccCurveName::Secp256k1 => ecies_inner::<k256::Secp256k1>(
-            &plaintext,
-            &key_bytes,
+            &input,
+            &key,
             data.pkcs,
             data.key_format,
             data.encryption_alg,
             data.for_encryption,
         ),
-    }?;
+    })?;
     data.output_encoding.encode(&cipher_bytes)
 }
 
@@ -345,7 +367,7 @@ where
         _ => {
             return Err(Error::Unsupported(
                 "unsupported rsa pkcs1 key".to_string(),
-            ))
+            ));
         }
     })
 }
@@ -413,7 +435,7 @@ where
         _ => {
             return Err(Error::Unsupported(
                 "unsupported pkcs1 rsa encoding".to_string(),
-            ))
+            ));
         }
     })
 }
@@ -445,7 +467,6 @@ where
 
 #[cfg(test)]
 mod test {
-
     use tracing::info;
     use tracing_test::traced_test;
 
@@ -472,11 +493,10 @@ mod test {
                 for format in [KeyFormat::Pem, KeyFormat::Der] {
                     let key = generate_ecc(curve_name, pkcs, format, encoding)
                         .unwrap();
-                    info!("secret: {}, key: {}", key.0, key.1);
                     let plaintext = "plaintext";
                     let ciphertext = ecies(EciesDto {
                         curve_name,
-                        key: key.1,
+                        key: key.1.unwrap(),
                         key_encoding: encoding,
                         input: plaintext.to_string(),
                         input_encoding: TextEncoding::Utf8,
@@ -491,7 +511,7 @@ mod test {
                     assert_eq!(
                         ecies(EciesDto {
                             curve_name,
-                            key: key.0,
+                            key: key.0.unwrap(),
                             key_encoding: encoding,
                             input: ciphertext,
                             input_encoding: encoding,
@@ -503,7 +523,7 @@ mod test {
                         })
                         .unwrap(),
                         plaintext
-                    )
+                    );
                 }
             }
         }

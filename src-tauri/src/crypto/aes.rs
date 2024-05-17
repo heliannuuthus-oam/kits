@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use aes::{
     cipher::{
         block_padding::Pkcs7, typenum, BlockCipher, BlockDecrypt,
@@ -34,6 +36,23 @@ add_encryption_trait_impl!(
     }
 );
 
+impl Debug for AesEncryptoinDto {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AesEncryptoinDto")
+            .field("input_encoding", &self.input_encoding)
+            .field("key_encoding", &self.key_encoding)
+            .field("output_encoding", &self.output_encoding)
+            .field("mode", &self.mode)
+            .field("padding", &self.padding)
+            .field("iv", &self.iv)
+            .field("iv_encoding", &self.iv_encoding)
+            .field("aad", &self.aad)
+            .field("aad_encoding", &self.aad_encoding)
+            .field("for_encryption", &self.for_encryption)
+            .finish()
+    }
+}
+
 #[tauri::command]
 pub fn generate_iv(size: usize, encoding: TextEncoding) -> Result<String> {
     let iv = random_bytes(size)?;
@@ -48,7 +67,7 @@ pub fn generate_aes(key_size: usize, encoding: TextEncoding) -> Result<String> {
 
 #[tauri::command]
 #[tracing::instrument(level = "debug")]
-pub fn aes_crypto(data: AesEncryptoinDto) -> Result<String> {
+pub fn crypto_aes(data: AesEncryptoinDto) -> Result<String> {
     info!(
         "aes crypto-> for_encryption: {} mode: {:?} padding: {:?}",
         data.for_encryption, data.mode, data.padding
@@ -234,7 +253,7 @@ where
 mod test {
     use super::generate_aes;
     use crate::{
-        crypto::aes::{aes_crypto, generate_iv, AesEncryptoinDto},
+        crypto::aes::{crypto_aes, generate_iv, AesEncryptoinDto},
         utils::{
             common::random_bytes,
             enums::{AesEncryptionPadding, EncryptionMode, TextEncoding},
@@ -250,7 +269,7 @@ mod test {
             let iv = generate_iv(12, encoding).unwrap();
             let aad_bytes = random_bytes(128).unwrap();
             let aad = encoding.encode(&aad_bytes).unwrap();
-            let ciphertext = aes_crypto(AesEncryptoinDto {
+            let ciphertext = crypto_aes(AesEncryptoinDto {
                 input: plaintext.to_string(),
                 input_encoding: TextEncoding::Utf8,
                 key: key.to_string(),
@@ -267,7 +286,7 @@ mod test {
             .unwrap();
             assert_eq!(
                 plaintext,
-                aes_crypto(AesEncryptoinDto {
+                crypto_aes(AesEncryptoinDto {
                     input: ciphertext,
                     input_encoding: encoding,
                     key,

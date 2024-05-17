@@ -5,30 +5,31 @@ use rsa::{RsaPrivateKey, RsaPublicKey};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
-use crate::utils::{
-    codec::{
-        pkcs8_pkcs1_converter_inner, private_bytes_to_pkcs1,
-        private_bytes_to_pkcs8, private_pkcs1_to_bytes, private_pkcs8_to_bytes,
-        public_bytes_to_pkcs1, public_bytes_to_pkcs8, public_pkcs1_to_bytes,
-        public_pkcs8_to_bytes, PkcsDto,
+use crate::{
+    add_encryption_trait_impl,
+    crypto::EncryptionDto,
+    utils::{
+        codec::{
+            pkcs8_pkcs1_converter_inner, private_bytes_to_pkcs1,
+            private_bytes_to_pkcs8, private_pkcs1_to_bytes,
+            private_pkcs8_to_bytes, public_bytes_to_pkcs1,
+            public_bytes_to_pkcs8, public_pkcs1_to_bytes,
+            public_pkcs8_to_bytes, PkcsDto,
+        },
+        common::KeyTuple,
+        enums::{Digest, KeyFormat, Pkcs, RsaEncryptionPadding, TextEncoding},
+        errors::{Error, Result},
     },
-    common::KeyTuple,
-    enums::{Digest, KeyFormat, Pkcs, RsaEncryptionPadding, TextEncoding},
-    errors::{Error, Result},
 };
 
-#[derive(Serialize, Deserialize)]
-pub struct RsaEncryptionDto {
-    key: String,
-    key_encoding: TextEncoding,
-    input: String,
-    input_encoding: TextEncoding,
-    output_encoding: TextEncoding,
+add_encryption_trait_impl!(RsaEncryptionDto {
     pkcs: Pkcs,
-    key_format: KeyFormat,
-    #[serde(flatten)]
-    padding: RsaEncryptionPaddingDto,
-}
+    format: KeyFormat,
+    padding: RsaEncryptionPadding,
+    digest: Option<Digest>,
+    mgf_digest: Option<Digest>,
+    for_encryption: bool
+});
 
 impl Debug for RsaEncryptionDto {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -37,18 +38,10 @@ impl Debug for RsaEncryptionDto {
             .field("input_encoding", &self.input_encoding)
             .field("output_encoding", &self.output_encoding)
             .field("pkcs", &self.pkcs)
-            .field("format", &self.key_format)
+            .field("format", &self.format)
             .field("padding", &self.padding)
             .finish()
     }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RsaEncryptionPaddingDto {
-    padding: RsaEncryptionPadding,
-    digest: Option<Digest>,
-    #[serde(rename = "mgfDigest")]
-    mgf_digest: Option<Digest>,
 }
 
 enum RsaPaddingScheme {
@@ -88,22 +81,23 @@ impl rsa::traits::PaddingScheme for RsaPaddingScheme {
     }
 }
 
-impl RsaEncryptionPaddingDto {
-    fn to_padding(&self) -> RsaPaddingScheme {
-        match self.padding {
-            RsaEncryptionPadding::Pkcs1v15 => {
-                RsaPaddingScheme::Pkcs1v15(rsa::Pkcs1v15Encrypt)
-            }
-            RsaEncryptionPadding::Oaep => {
-                let digest = self.digest.as_ref().unwrap_or(&Digest::Sha256);
-                let mgf_digest =
-                    self.mgf_digest.as_ref().unwrap_or(&Digest::Sha256);
-                RsaPaddingScheme::Oaep(rsa::Oaep {
-                    digest: digest.to_digest(),
-                    mgf_digest: mgf_digest.to_digest(),
-                    label: None,
-                })
-            }
+fn to_padding(
+    padding: RsaEncryptionPadding,
+    digest: Option<Digest>,
+    mgf_digest: Option<Digest>,
+) -> RsaPaddingScheme {
+    match padding {
+        RsaEncryptionPadding::Pkcs1v15 => {
+            RsaPaddingScheme::Pkcs1v15(rsa::Pkcs1v15Encrypt)
+        }
+        RsaEncryptionPadding::Oaep => {
+            let digest = digest.as_ref().unwrap_or(&Digest::Sha256);
+            let mgf_digest = mgf_digest.as_ref().unwrap_or(&Digest::Sha256);
+            RsaPaddingScheme::Oaep(rsa::Oaep {
+                digest: digest.to_digest(),
+                mgf_digest: mgf_digest.to_digest(),
+                label: None,
+            })
         }
     }
 }
@@ -149,33 +143,32 @@ pub async fn derive_rsa(
 }
 
 #[tauri::command]
-pub async fn encrypt_rsa(data: RsaEncryptionDto) -> Result<String> {
-    info!("rsa encryption: {:?}", data);
-
-    let key_bytes = data.key_encoding.decode(&data.key)?;
-    let input_bytes = data.input_encoding.decode(&data.input)?;
-
-    let public_key =
-        bytes_to_public_key(&key_bytes, data.pkcs, data.key_format)?;
-
-    let cipher_bytes =
-        encrypt_rsa_inner(public_key, &input_bytes, data.padding)?;
-    data.output_encoding.encode(&cipher_bytes)
-}
-
-#[tauri::command]
-pub async fn decrypt_rsa(data: RsaEncryptionDto) -> Result<String> {
-    info!("rsa encryption: {:?}", data);
-
-    let key_bytes = data.key_encoding.decode(&data.key)?;
-    let input_bytes = data.input_encoding.decode(&data.input)?;
-
-    let private_key =
-        bytes_to_private_key(&key_bytes, data.pkcs, data.key_format)?;
-
-    let plain_bytes =
-        decrypt_rsa_inner(private_key, &input_bytes, data.padding)?;
-    data.output_encoding.encode(&plain_bytes)
+pub async fn crypto_rsa(data: RsaEncryptionDto) -> Result<String> {
+    info!("rsa crypto: {:?}", data);
+    let key = data.get_key()?;
+    let input = data.get_input()?;
+    let output_encoding = data.get_output_encoding();
+    let output = if data.for_encryption {
+        let public_key = bytes_to_public_key(&key, data.pkcs, data.format)?;
+        encrypt_rsa_inner(
+            public_key,
+            &input,
+            data.padding,
+            data.digest,
+            data.mgf_digest,
+        )?
+    } else {
+        let input = data.input_encoding.decode(&data.input)?;
+        let private_key = bytes_to_private_key(&key, data.pkcs, data.format)?;
+        decrypt_rsa_inner(
+            private_key,
+            &input,
+            data.padding,
+            data.digest,
+            data.mgf_digest,
+        )?
+    };
+    output_encoding.encode(&output)
 }
 
 #[tauri::command]
@@ -224,10 +217,12 @@ pub async fn rsa_transfer_key(
 pub fn encrypt_rsa_inner(
     key: RsaPublicKey,
     input: &[u8],
-    padding: RsaEncryptionPaddingDto,
+    padding: RsaEncryptionPadding,
+    digest: Option<Digest>,
+    mgf_digest: Option<Digest>,
 ) -> Result<Vec<u8>> {
     let mut rng = rand::thread_rng();
-    let pad = padding.to_padding();
+    let pad = to_padding(padding, digest, mgf_digest);
     Ok(key
         .encrypt(&mut rng, pad, input)
         .context("rsa encrypt failed")?)
@@ -236,9 +231,11 @@ pub fn encrypt_rsa_inner(
 pub fn decrypt_rsa_inner(
     key: RsaPrivateKey,
     input: &[u8],
-    padding: RsaEncryptionPaddingDto,
+    padding: RsaEncryptionPadding,
+    digest: Option<Digest>,
+    mgf_digest: Option<Digest>,
 ) -> Result<Vec<u8>> {
-    let pad = padding.to_padding();
+    let pad = to_padding(padding, digest, mgf_digest);
     Ok(key.decrypt(pad, input).context("rsa decrypt failed")?)
 }
 

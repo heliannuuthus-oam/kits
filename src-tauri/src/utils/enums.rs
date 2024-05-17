@@ -18,6 +18,12 @@ pub enum EccCurveName {
     Secp256k1,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum EdwardsCurveName {
+    Curve25519,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum EncryptionMode {
@@ -76,7 +82,7 @@ pub enum EciesEncryptionAlgorithm {
     Aes256Gcm,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum RsaEncryptionPadding {
     #[serde(rename = "pkcs1-v1_5")]
     Pkcs1v15,
@@ -90,7 +96,7 @@ pub enum AesEncryptionPadding {
     NoPadding,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 #[serde(rename_all = "kebab-case")]
 pub enum Digest {
     Sha1,

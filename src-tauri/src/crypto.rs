@@ -1,8 +1,8 @@
 use crate::utils::{enums::TextEncoding, errors::Result};
 
 pub mod aes;
-pub mod curve_25519;
 pub mod ecc;
+pub mod edwards;
 pub mod kdf;
 pub mod rsa;
 
@@ -15,7 +15,7 @@ pub trait EncryptionDto {
 #[macro_export]
 macro_rules! add_encryption_trait_impl {
   ($struct_name:ident { $($field_name:ident : $field_type:ty),* }) => {
-      #[derive(Debug, Clone, Serialize, Deserialize)]
+      #[derive(Clone, Serialize, Deserialize)]
       pub struct $struct_name {
           pub input: String,
           pub input_encoding: TextEncoding,

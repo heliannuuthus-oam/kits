@@ -7,14 +7,13 @@ use elliptic_curve::{
     sec1::{FromEncodedPoint, ToEncodedPoint},
     AffinePoint, FieldBytesSize,
 };
-use pkcs1::DecodeRsaPublicKey;
 use sec1::point::ModulusSize;
 
 use super::{
     enums::{EccCurveName, KeyFormat, TextEncoding},
     errors::{Error, Result},
 };
-use crate::{crypto::curve_25519, utils::enums::Pkcs};
+use crate::utils::enums::Pkcs;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone, Copy)]
 pub struct PkcsDto {
@@ -50,12 +49,12 @@ pub fn base64_decode(
     if input.is_empty() {
         Ok(b"".to_vec())
     } else {
-        Ok(match (unpadded, urlsafety) {
+        Ok((match (unpadded, urlsafety) {
             (true, true) => Base64UrlUnpadded::decode_vec(input),
             (true, false) => Base64Unpadded::decode_vec(input),
             (false, true) => Base64Url::decode_vec(input),
             (false, false) => Base64::decode_vec(input),
-        }
+        })
         .context(format!(
             "base64 decode failed, unppaded: {}, urlsafety: {}",
             unpadded, urlsafety
@@ -137,7 +136,9 @@ fn pkcs8_sec1_converter_inner<C>(
     is_public: bool,
 ) -> Result<Vec<u8>>
 where
-    C: pkcs8::AssociatedOid + elliptic_curve::CurveArithmetic,
+    C: pkcs8::AssociatedOid
+        + elliptic_curve::CurveArithmetic
+        + PointCompression,
     elliptic_curve::AffinePoint<C>: elliptic_curve::sec1::FromEncodedPoint<C>
         + elliptic_curve::sec1::ToEncodedPoint<C>,
     elliptic_curve::FieldBytesSize<C>: elliptic_curve::sec1::ModulusSize,
@@ -151,7 +152,7 @@ where
                 )?;
                 match to.pkcs {
                     Pkcs::Pkcs8 => public_pkcs8_to_bytes(key, to.format),
-                    Pkcs::Sec1 => public_sec1_to_bytes(key, to.format),
+                    Pkcs::Sec1 => public_sec1_to_bytes::<C>(key),
                     _ => Err(Error::Unsupported(
                         "only supported ecc key".to_string(),
                     )),
@@ -172,13 +173,10 @@ where
         }
         Pkcs::Sec1 => {
             if is_public {
-                let key = public_bytes_to_sec1::<elliptic_curve::PublicKey<C>>(
-                    input,
-                    from.format,
-                )?;
+                let key = public_bytes_to_sec1::<C>(input)?;
                 match to.pkcs {
                     Pkcs::Pkcs8 => public_pkcs8_to_bytes(key, to.format),
-                    Pkcs::Sec1 => public_sec1_to_bytes(key, to.format),
+                    Pkcs::Sec1 => public_sec1_to_bytes::<C>(key),
                     _ => Err(Error::Unsupported(
                         "only supported ecc key".to_string(),
                     )),
@@ -458,25 +456,14 @@ where
 
 pub(crate) fn public_bytes_to_sec1<C>(
     input: &[u8],
-    encoding: KeyFormat,
 ) -> Result<elliptic_curve::PublicKey<C>>
 where
-    C: PointCompression,
+    C: PointCompression + elliptic_curve::CurveArithmetic,
     AffinePoint<C>: FromEncodedPoint<C> + ToEncodedPoint<C>,
     FieldBytesSize<C>: ModulusSize,
 {
-    Ok(match encoding {
-        KeyFormat::Pem => {
-            let key_string = String::from_utf8(input.to_vec())
-                .context("invalid utf-8 key")?;
-            elliptic_curve::PublicKey::<C>::from_sec1_bytes(&key_string)
-                .context("invalid sec1 pem public key")?
-        }
-        KeyFormat::Der => {
-            elliptic_curve::PublicKey::<C>::from_sec1_bytes(input)
-                .context("invalid sec1 der public key")?
-        }
-    })
+    Ok(elliptic_curve::PublicKey::<C>::from_sec1_bytes(input)
+        .context("invalid sec1 pem public key")?)
 }
 
 pub(crate) fn private_sec1_to_bytes<E>(
@@ -500,23 +487,13 @@ where
     })
 }
 
-pub(crate) fn public_sec1_to_bytes<E>(
-    input: E,
-    encoding: KeyFormat,
+pub(crate) fn public_sec1_to_bytes<C>(
+    input: elliptic_curve::PublicKey<C>,
 ) -> Result<Vec<u8>>
 where
-    E: spki::EncodePublicKey,
+    C: PointCompression + elliptic_curve::CurveArithmetic,
+    AffinePoint<C>: FromEncodedPoint<C> + ToEncodedPoint<C>,
+    FieldBytesSize<C>: ModulusSize,
 {
-    Ok(match encoding {
-        KeyFormat::Pem => input
-            .to_public_key_pem(base64ct::LineEnding::LF)
-            .context("to sec1 pem public key failed")?
-            .as_bytes()
-            .to_vec(),
-        KeyFormat::Der => input
-            .to_public_key_der()
-            .context("to sec1 der public key failed")?
-            .as_bytes()
-            .to_vec(),
-    })
+    Ok(input.to_sec1_bytes().to_vec())
 }

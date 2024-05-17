@@ -1,6 +1,7 @@
 import {
 	Button,
 	Col,
+	Collapse,
 	Flex,
 	Form,
 	FormRule,
@@ -25,7 +26,7 @@ import { invoke } from "@tauri-apps/api";
 import { EccPkcsSelect } from "../../components/ecc/EccPkcsSelect";
 import { EccEncodingSelect } from "../../components/ecc/EccEncodingSelect";
 
-const keyHeight = 700;
+const keyHeight = 418;
 const keyButtonHeight = 32;
 const keyButtonWidth = 120;
 
@@ -105,7 +106,7 @@ export const EccDeriveKey = () => {
 			validateTrigger="onBlur"
 		>
 			<Row justify="space-between" align="top">
-				<Col span={10}>
+				<Col span={9}>
 					<Flex
 						align="center"
 						justify="space-between"
@@ -115,86 +116,8 @@ export const EccDeriveKey = () => {
 							PrivateKey
 						</Typography.Title>
 					</Flex>
-					<Form.Item name="privateKey" rules={keyValidator}>
-						<DefaultTextArea
-							disabled={generating}
-							style={{ height: keyHeight }}
-						/>
-					</Form.Item>
 				</Col>
-				<Col span={4} style={{ padding: "0 15px" }}>
-					<Flex
-						gap={52}
-						justify="center"
-						vertical
-						style={{ height: keyHeight }}
-					>
-						<Form.Item name="pkcsFormat" label="pkcs format">
-							<EccPkcsSelect
-								converter={eccPkcsConverter}
-								disabled={generating}
-								style={{
-									minWidth: keyButtonWidth,
-									minHeight: keyButtonHeight,
-								}}
-								getInputs={() =>
-									form.getFieldsValue([
-										"privateKey",
-										"publicKey",
-										"encoding",
-										"curveName",
-									])
-								}
-								setInputs={form.setFieldsValue}
-							/>
-						</Form.Item>
-						<Form.Item name="encoding" label="encoding">
-							<EccEncodingSelect
-								converter={eccEncodingConverter}
-								getInputs={() =>
-									form.getFieldsValue([
-										"privateKey",
-										"publicKey",
-										"pkcsFormat",
-										"curveName",
-									])
-								}
-								setInputs={form.setFieldsValue}
-								disabled={generating}
-								style={{
-									minWidth: keyButtonWidth,
-									minHeight: keyButtonHeight,
-								}}
-							/>
-						</Form.Item>
-						<Button
-							loading={generating}
-							onClick={derivePublicKey}
-							disabled={generating}
-							style={{ minWidth: keyButtonWidth, minHeight: keyButtonHeight }}
-							type="primary"
-						>
-							derive
-						</Button>
-						<Form.Item name="curveName" label="curve name">
-							<Select
-								disabled={generating}
-								options={curveNames}
-								style={{ minWidth: keyButtonWidth, minHeight: keyButtonHeight }}
-							/>
-						</Form.Item>
-
-						<Button
-							loading={generating}
-							type="primary"
-							onClick={generatePrivateKey}
-							style={{ minWidth: keyButtonWidth, minHeight: keyButtonHeight }}
-						>
-							generate
-						</Button>
-					</Flex>
-				</Col>
-				<Col span={10}>
+				<Col offset={4} span={9}>
 					<Flex
 						align="center"
 						justify="space-between"
@@ -204,6 +127,98 @@ export const EccDeriveKey = () => {
 							PublicKey
 						</Typography.Title>
 					</Flex>
+				</Col>
+				<Col span={9}>
+					<Form.Item name="privateKey" rules={keyValidator}>
+						<DefaultTextArea
+							disabled={generating}
+							style={{ height: keyHeight }}
+						/>
+					</Form.Item>
+				</Col>
+				<Col span={6} style={{ padding: "0 15px" }}>
+					<Flex justify="space-between" gap={24} vertical>
+						<Button
+							loading={generating}
+							onClick={derivePublicKey}
+							disabled={generating}
+							style={{ minWidth: keyButtonWidth, minHeight: keyButtonHeight }}
+							type="primary"
+						>
+							derive
+						</Button>
+						<Button
+							loading={generating}
+							type="primary"
+							onClick={generatePrivateKey}
+							style={{ minWidth: keyButtonWidth, minHeight: keyButtonHeight }}
+						>
+							generate
+						</Button>
+						<Collapse
+							ghost
+							items={[
+								{
+									key: "higher configuration",
+									label: "configuration",
+									children: (
+										<>
+											<Form.Item name="pkcsFormat" label="pkcs format">
+												<EccPkcsSelect
+													converter={eccPkcsConverter}
+													disabled={generating}
+													style={{
+														minWidth: keyButtonWidth,
+														minHeight: keyButtonHeight,
+													}}
+													getInputs={() =>
+														form.getFieldsValue([
+															"privateKey",
+															"publicKey",
+															"encoding",
+															"curveName",
+														])
+													}
+													setInputs={form.setFieldsValue}
+												/>
+											</Form.Item>
+											<Form.Item name="encoding" label="encoding">
+												<EccEncodingSelect
+													converter={eccEncodingConverter}
+													getInputs={() =>
+														form.getFieldsValue([
+															"privateKey",
+															"publicKey",
+															"pkcsFormat",
+															"curveName",
+														])
+													}
+													setInputs={form.setFieldsValue}
+													disabled={generating}
+													style={{
+														minWidth: keyButtonWidth,
+														minHeight: keyButtonHeight,
+													}}
+												/>
+											</Form.Item>
+											<Form.Item name="curveName" label="curve name">
+												<Select
+													disabled={generating}
+													options={curveNames}
+													style={{
+														minWidth: keyButtonWidth,
+														minHeight: keyButtonHeight,
+													}}
+												/>
+											</Form.Item>
+										</>
+									),
+								},
+							]}
+						/>
+					</Flex>
+				</Col>
+				<Col span={9}>
 					<Form.Item name="publicKey" rules={keyValidator}>
 						<DefaultTextArea
 							disabled={generating}
