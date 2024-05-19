@@ -16,11 +16,11 @@
 				"all": false,
 				"open": true
 			},
-      "clipboard": {
-        "all": true, 
-        "writeText": true,
-        "readText": true
-      }
+			"clipboard": {
+				"all": true,
+				"writeText": true,
+				"readText": true
+			}
 		},
 		"windows": [
 			{

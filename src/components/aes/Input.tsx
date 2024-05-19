@@ -1,9 +1,7 @@
-import { DownOutlined } from "@ant-design/icons";
 import { invoke } from "@tauri-apps/api";
 import {
 	Button,
 	Col,
-	Dropdown,
 	Form,
 	FormRule,
 	Input,
@@ -13,39 +11,20 @@ import {
 	Typography,
 	notification,
 } from "antd";
-import { useRef, useState } from "react";
-import { TextCodecRef, TextEncoding, textCodecor } from "../codec/codec";
-import { TextRadioCodec } from "../codec/TextCodecRadio";
+import { useState } from "react";
+import { TextEncoding, textCodecor } from "../codec/codec";
+import { EncryptionMode } from "./Setting";
+import { AesForm } from "../../pages/encryption/aes";
+import { OptionButton } from "../OptionButton";
 
 const { TextArea } = Input;
 
 const { Title } = Typography;
 
-enum Mode {
-	ECB = "ECB",
-	CBC = "CBC",
-	GCM = "GCM",
-}
-
-enum Padding {
-	Pkcs7Padding = "Pkcs7Padding",
-	NoPadding = "NoPadding",
-}
-
 const size = "middle";
 
-type FormInput = {
-	iv?: string;
-	key: string;
-	padding: Padding;
-	mode: Mode;
-	aad?: string;
-	input: string;
-	format: TextEncoding;
-};
-
-const ivComputer = (mode: Mode, encoding: TextEncoding): number => {
-	let length = mode === Mode.CBC ? 16 : 12;
+const ivComputer = (mode: EncryptionMode, encoding: TextEncoding): number => {
+	let length = mode === EncryptionMode.CBC ? 16 : 12;
 	switch (encoding) {
 		case TextEncoding.Base64:
 			length = Math.floor((length + 2) / 3) * 4;
@@ -71,28 +50,24 @@ const keyComputer = (keySize: number, encoding: TextEncoding): number => {
 };
 
 const AesInput = ({
-	setOutput,
+	setSettingOpen,
 }: {
-	setOutput: (ciphertext: Uint8Array) => void;
+	setSettingOpen: (settingOpen: boolean) => void;
 }) => {
-	const [form] = Form.useForm<FormInput>();
+	const form = Form.useFormInstance<AesForm>();
 	const [keySize, setKeySize] = useState<number>(128);
-	const [operation, setOperation] = useState<string>("encrypt");
-	const initialValues = {
-		mode: Mode.CBC,
-		padding: Padding.Pkcs7Padding,
-		iv: "",
-		key: "",
-	};
-	const codecEl = useRef<TextCodecRef>(null);
 	const mode = Form.useWatch("mode", form);
+	const forEncryption = Form.useWatch("forEncryption", {
+		form,
+		preserve: true,
+	});
 	const [notifyApi, notifyContextHodler] = notification.useNotification({
 		stack: { threshold: 1 },
 	});
 
 	const notify = (description: unknown) => {
 		notifyApi.error({
-			message: `${operation} failed`,
+			message: `${forEncryption ? "encrypt" : "decrypt"} failed`,
 			description: description as string,
 			duration: 3,
 			placement: "bottomRight",
@@ -103,7 +78,7 @@ const AesInput = ({
 		{ required: true, message: "key is required" },
 		({ getFieldValue }) => ({
 			validator(_, value) {
-				const encoding = codecEl.current?.getEncoding() || TextEncoding.Base64;
+				const encoding = form.getFieldValue("keyEncoding");
 				const length = keyComputer(keySize, encoding);
 				if (!value || getFieldValue("key").length === length) {
 					return Promise.resolve();
@@ -121,7 +96,7 @@ const AesInput = ({
 		{ required: true, message: "iv is required" },
 		({ getFieldValue }) => ({
 			validator(_, value) {
-				const encoding = codecEl.current?.getEncoding() || TextEncoding.Base64;
+				const encoding = form.getFieldValue("ivEncoding");
 				const length = ivComputer(mode, encoding);
 				if (!value || getFieldValue("iv").length === length) {
 					return Promise.resolve();
@@ -148,8 +123,9 @@ const AesInput = ({
 			const dataBytes = await invoke<Uint8Array>("generate_aes", {
 				keySize: keySize,
 			});
+
 			const data = await textCodecor.encode(
-				codecEl.current?.getEncoding() || TextEncoding.Base64,
+				form.getFieldValue("keyEncoding") || TextEncoding.Base64,
 				dataBytes
 			);
 
@@ -162,11 +138,10 @@ const AesInput = ({
 	const generateIv = async () => {
 		try {
 			const dataBytes = await invoke<Uint8Array>("generate_iv", {
-				size: mode === Mode.CBC ? 16 : 12,
+				size: mode === EncryptionMode.CBC ? 16 : 12,
 			});
-
 			const data = await textCodecor.encode(
-				codecEl.current?.getEncoding() || TextEncoding.Base64,
+				form.getFieldValue("ivEncoding"),
 				dataBytes
 			);
 
@@ -178,48 +153,41 @@ const AesInput = ({
 
 	const encryptOrDecrypt = async () => {
 		try {
-			const eencoding = codecEl.current?.getEncoding() || TextEncoding.Base64;
 			await form.validateFields({ validateOnly: true });
-			const input = await textCodecor.decode(
-				eencoding,
-				form.getFieldValue("input")
-			);
-			const iv = await textCodecor.decode(eencoding, form.getFieldValue("iv"));
+			const input = form.getFieldValue("input");
+			const iv =
+				mode === EncryptionMode.ECB
+					? []
+					: await textCodecor.decode(
+							form.getFieldValue("ivEncoding"),
+							form.getFieldValue("iv")
+						);
 			const key = await textCodecor.decode(
-				eencoding,
+				form.getFieldValue("keyEncoding"),
 				form.getFieldValue("key")
 			);
-			let output;
-			if (operation === "encrypt") {
-				output = await invoke<Uint8Array>("encrypt_aes", {
-					...form.getFieldsValue(),
-					input,
-					iv,
-					key,
-				});
-			} else {
-				output = await invoke<Uint8Array>("decrypt_aes", {
-					...form.getFieldsValue(),
-					input,
-					iv,
-					key,
-				});
-			}
-			setOutput(output);
+
+			const outputBytes = await invoke<Uint8Array>("aes_crypto", {
+				...form.getFieldsValue(true),
+				input,
+				iv,
+				key,
+			});
+			const output = await textCodecor.encode(
+				form.getFieldValue("outputEncoding"),
+				outputBytes
+			);
+
+			form.setFieldsValue({ output });
 		} catch (err: unknown) {
-			setOutput(new Uint8Array());
+			form.setFieldsValue({ output: "" });
+			console.log(err);
 		}
 	};
 
-	const onValuesChange = (value: object) => {
-		if (Object.keys(value).indexOf("mode") !== -1) {
-			form.setFieldsValue({ key: undefined, iv: undefined });
-		}
-	};
-
-	const renderExtract = (mode: Mode): React.ReactElement => {
+	const renderExtract = (mode: EncryptionMode): React.ReactElement => {
 		switch (mode) {
-			case Mode.CBC:
+			case EncryptionMode.CBC:
 				return (
 					<Form.Item key="cbc_iv">
 						<Space.Compact size={size} style={{ width: "100%" }}>
@@ -239,7 +207,7 @@ const AesInput = ({
 					</Form.Item>
 				);
 
-			case Mode.GCM:
+			case EncryptionMode.GCM:
 				return (
 					<>
 						<Form.Item key="gcm_iv" hasFeedback>
@@ -268,37 +236,8 @@ const AesInput = ({
 		}
 	};
 
-	const changeOperator = async () => {
-		try {
-			const fromEncoding =
-				codecEl.current?.getEncoding() || TextEncoding.Base64;
-			const toEncoding = TextEncoding.Base64;
-			const values = form.getFieldsValue(["iv", "key"]);
-			const iv = await textCodecor.encode(
-				toEncoding,
-				await textCodecor.decode(fromEncoding, values["iv"])
-			);
-			const key = await textCodecor.encode(
-				toEncoding,
-				await textCodecor.decode(fromEncoding, values["key"])
-			);
-			form.setFieldsValue({ input: "", iv, key });
-			codecEl.current?.setEncoding(toEncoding);
-		} catch (error) {
-			console.log(error);
-		}
-	};
-
 	return (
-		<Form
-			form={form}
-			onValuesChange={onValuesChange}
-			initialValues={initialValues}
-			layout="vertical"
-			size={size}
-			style={{ width: "100%", padding: 24 }}
-			validateTrigger="onBlur"
-		>
+		<>
 			{notifyContextHodler}
 			<Form.Item key="basic">
 				<Row justify="space-between" align="middle">
@@ -308,95 +247,70 @@ const AesInput = ({
 						</Title>
 					</Col>
 					<Col>
-						<Form.Item noStyle name="mode">
-							<Select
-								size={size}
-								options={[
-									{ value: Mode.ECB, label: <span>AES_ECB</span> },
-									{ value: Mode.CBC, label: <span>AES_CBC</span> },
-									{ value: Mode.GCM, label: <span>AES_GCM</span> },
-								]}
-							/>
-						</Form.Item>
+						<Button type="primary" onClick={() => setSettingOpen(true)}>
+							settings
+						</Button>
 					</Col>
 					<Col>
-						<Form.Item noStyle name="padding">
-							<Select
+						<Space.Compact>
+							<OptionButton
+								menu={{
+									items: [
+										{
+											label: (
+												<div
+													onClick={(_) => {
+														form.setFieldsValue({
+															forEncryption: true,
+														});
+														form.resetFields([
+															"input",
+															"output",
+															"outputEncoding",
+															"inputEncoding",
+														]);
+													}}
+												>
+													encrypt
+												</div>
+											),
+											key: "encrypt",
+										},
+										{
+											label: (
+												<div
+													onClick={(_) => {
+														const output = form.getFieldValue("output");
+														const data: Record<string, unknown> = {
+															forEncryption: false,
+														};
+														if (output && output !== "") {
+															data["input"] = output;
+														}
+														form.setFieldsValue(data);
+														form.resetFields([
+															"output",
+															"outputEncoding",
+															"inputEncoding",
+														]);
+													}}
+												>
+													decrypt
+												</div>
+											),
+											key: "decrypt",
+										},
+									],
+								}}
+								onClick={encryptOrDecrypt}
 								size={size}
-								options={[
-									{
-										value: Padding.Pkcs7Padding,
-										label: <span>Pkcs7Padding</span>,
-									},
-									{ value: Padding.NoPadding, label: <span>NoPadding</span> },
-								]}
-							/>
-						</Form.Item>
+								children={forEncryption === false ? "decrypt" : "encrypt"}
+							></OptionButton>
+						</Space.Compact>
 					</Col>
 				</Row>
 			</Form.Item>
-			<Form.Item key="operation">
-				<Row justify="space-between" align="middle">
-					<Col>
-						<TextRadioCodec
-							codecor={textCodecor}
-							ref={codecEl}
-							size={size}
-							defaultValue={TextEncoding.UTF8}
-							setInputs={(inputs: Record<string, string>) =>
-								form.setFieldsValue({ ...inputs })
-							}
-							getInputs={() => form.getFieldsValue(["key", "iv"])}
-						/>
-					</Col>
-					<Col>
-						<Col>
-							<Space.Compact>
-								<Dropdown.Button
-									menu={{
-										items: [
-											{
-												label: (
-													<div
-														onClick={async (_) => {
-															setOperation("encrypt");
-															await changeOperator();
-														}}
-													>
-														encrypt
-													</div>
-												),
-												key: "encrypt",
-											},
-											{
-												label: (
-													<div
-														onClick={async (_) => {
-															setOperation("decrypt");
-															await changeOperator();
-														}}
-													>
-														decrypt
-													</div>
-												),
-												key: "decrypt",
-											},
-										],
-									}}
-									trigger={["hover"]}
-									htmlType="submit"
-									size={size}
-									style={{ margin: 0 }}
-									onClick={encryptOrDecrypt}
-									icon={<DownOutlined />}
-								>
-									{operation}
-								</Dropdown.Button>
-							</Space.Compact>
-						</Col>
-					</Col>
-				</Row>
-			</Form.Item>
+
 			<Form.Item key="key">
 				<Space.Compact size={size} style={{ width: "100%" }}>
 					<Form.Item
@@ -435,7 +349,7 @@ const AesInput = ({
 					</Form.Item>
 				</div>
 			</Form.Item>
-		</Form>
+		</>
 	);
 };
 

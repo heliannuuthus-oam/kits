@@ -2,11 +2,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use anyhow::Context;
-use helper::errors::Result;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
+use utils::errors::Result;
 
 mod crypto;
-mod helper;
+mod utils;
 
 fn main() -> Result<()> {
     let file_appender = tracing_appender::rolling::daily("./log", "app.log");
@@ -38,24 +38,23 @@ fn main() -> Result<()> {
             crypto::ecc::generate_ecc,
             crypto::ecc::derive_ecc,
             crypto::ecc::ecies,
-            crypto::curve_25519::generate_curve_25519_key,
-            crypto::curve_25519::curve_25519_ecies,
+            crypto::edwards::generate_edwards,
+            crypto::edwards::derive_edwards,
+            crypto::edwards::ecies_edwards,
             // encrytion
-            crypto::aes::encrypt_aes,
-            crypto::aes::decrypt_aes,
-            crypto::rsa::encrypt_rsa,
-            crypto::rsa::decrypt_rsa,
+            crypto::aes::crypto_aes,
+            crypto::rsa::crypto_rsa,
             crypto::ecc::ecies,
             // format
             crypto::rsa::transfer_rsa_key,
-            helper::codec::base64_encode,
-            helper::codec::base64_decode,
-            helper::codec::hex_encode,
-            helper::codec::hex_decode,
-            helper::codec::string_encode,
-            helper::codec::string_decode,
-            helper::codec::pkcs8_sec1_transfer,
-            helper::codec::pkcs8_pkcs1_transfer,
+            crypto::ecc::transfer_ecc_key,
+            crypto::edwards::transfer_edwards_key,
+            utils::codec::base64_encode,
+            utils::codec::base64_decode,
+            utils::codec::hex_encode,
+            utils::codec::hex_decode,
+            utils::codec::string_encode,
+            utils::codec::string_decode
         ])
         .run(tauri::generate_context!())
         .context("error while running tauri application")?;

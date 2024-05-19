@@ -23,6 +23,8 @@ export interface CodecSelectProps<T> extends SelectProps {
 	callback?: (value: T) => void;
 	getInputs: () => Record<string, string>;
 	setInputs: (inputs: Record<string, string>) => void;
+	value?: T;
+	onChange?: (value: T) => void;
 }
 
 export enum TextEncoding {
@@ -30,6 +32,15 @@ export enum TextEncoding {
 	Hex = "hex",
 	UTF8 = "utf8",
 }
+
+export const textEncodings: SelectProps["options"] = (
+	Object.keys(TextEncoding) as Array<keyof typeof TextEncoding>
+).map((key) => {
+	return {
+		value: TextEncoding[key],
+		label: <span>{TextEncoding[key].toString()}</span>,
+	};
+});
 
 export type TextCodecRef = CodecRef<TextEncoding>;
 export type TextCodecRadioProps = CodecRadioProps<TextEncoding>;

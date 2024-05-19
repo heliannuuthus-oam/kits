@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use aes::{
     cipher::{
         block_padding::Pkcs7, typenum, BlockCipher, BlockDecrypt,
@@ -9,100 +11,130 @@ use aes::{
 use aes_gcm::{aead::AeadMutInPlace, AesGcm, Nonce};
 use anyhow::Context;
 use block_padding::NoPadding;
-use serde_bytes::ByteBuf;
+use serde::{Deserialize, Serialize};
 use tracing::info;
 
-use crate::helper::{
-    common::random_bytes,
-    enums::{AesEncryptionPadding, EncryptionMode},
-    errors::{Error, Result},
+use crate::{
+    add_encryption_trait_impl,
+    crypto::EncryptionDto,
+    utils::{
+        common::random_bytes,
+        enums::{AesEncryptionPadding, EncryptionMode, TextEncoding},
+        errors::{Error, Result},
+    },
 };
 
+add_encryption_trait_impl!(
+    AesEncryptoinDto {
+        mode: EncryptionMode,
+        padding: AesEncryptionPadding,
+        iv: Option<String>,
+        iv_encoding: Option<TextEncoding>,
+        aad: Option<String>,
+        aad_encoding: Option<TextEncoding>,
+        for_encryption: bool
+    }
+);
+
+impl Debug for AesEncryptoinDto {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AesEncryptoinDto")
+            .field("input_encoding", &self.input_encoding)
+            .field("key_encoding", &self.key_encoding)
+            .field("output_encoding", &self.output_encoding)
+            .field("mode", &self.mode)
+            .field("padding", &self.padding)
+            .field("iv", &self.iv)
+            .field("iv_encoding", &self.iv_encoding)
+            .field("aad", &self.aad)
+            .field("aad_encoding", &self.aad_encoding)
+            .field("for_encryption", &self.for_encryption)
+            .finish()
+    }
+}
+
 #[tauri::command]
-pub fn generate_iv(size: usize) -> Result<ByteBuf> {
+pub fn generate_iv(size: usize, encoding: TextEncoding) -> Result<String> {
     let iv = random_bytes(size)?;
-    Ok(ByteBuf::from(iv))
+    encoding.encode(&iv)
 }
 
 #[tauri::command]
-pub fn generate_aes(key_size: usize) -> Result<ByteBuf> {
-    let key = random_bytes(key_size / 8)?;
-    Ok(ByteBuf::from(key))
-}
-
-#[tauri::command]
-pub fn encrypt_aes(
-    mode: EncryptionMode,
-    key: ByteBuf,
-    input: ByteBuf,
-    padding: AesEncryptionPadding,
-    iv: Option<ByteBuf>,
-    aad: Option<ByteBuf>,
-) -> Result<Vec<u8>> {
-    info!("aes encryption-> mode: {:?} padding: {:?}", mode, padding);
-    let iv: Option<Vec<u8>> = iv.map(|nonce| nonce.to_vec());
-    let aad: Option<Vec<u8>> = aad.map(|association| association.to_vec());
-    encrypt_or_decrypt_aes(mode, &key, &input, padding, iv, aad, true)
+pub fn generate_aes(key_size: usize, encoding: TextEncoding) -> Result<String> {
+    let key: Vec<u8> = random_bytes(key_size / 8)?;
+    encoding.encode(&key)
 }
 
 #[tauri::command]
 #[tracing::instrument(level = "debug")]
-pub fn decrypt_aes(
-    mode: EncryptionMode,
-    key: ByteBuf,
-    input: ByteBuf,
-    padding: AesEncryptionPadding,
-    iv: Option<ByteBuf>,
-    aad: Option<ByteBuf>,
-) -> Result<Vec<u8>> {
-    info!("aes decryption-> mode: {:?} padding: {:?}", mode, padding);
-    let iv: Option<Vec<u8>> = iv.map(|nonce| nonce.to_vec());
-    let aad: Option<Vec<u8>> = aad.map(|association| association.to_vec());
-    encrypt_or_decrypt_aes(mode, &key, &input, padding, iv, aad, false)
+pub fn crypto_aes(data: AesEncryptoinDto) -> Result<String> {
+    info!(
+        "aes crypto-> for_encryption: {} mode: {:?} padding: {:?}",
+        data.for_encryption, data.mode, data.padding
+    );
+    let iv: Option<Vec<u8>> = data.iv.as_ref().and_then(|nonce| {
+        data.iv_encoding
+            .map(|enc| enc.decode(nonce).unwrap_or_default())
+    });
+
+    let aad: Option<Vec<u8>> = data.aad.as_ref().and_then(|association| {
+        data.aad_encoding
+            .map(|enc| enc.decode(association).unwrap_or_default())
+    });
+    let key_bytes = data.get_key()?;
+    let plaintext = data.get_input()?;
+    let output_encoding = data.get_output_encoding();
+    let output = encrypt_or_decrypt_aes(
+        data.mode,
+        &plaintext,
+        &key_bytes,
+        iv,
+        aad,
+        data.padding,
+        data.for_encryption,
+    )?;
+    output_encoding.encode(&output)
 }
 
 pub(crate) fn encrypt_or_decrypt_aes(
     mode: EncryptionMode,
+    plaintext: &[u8],
     key: &[u8],
-    input: &[u8],
-    padding: AesEncryptionPadding,
     iv: Option<Vec<u8>>,
     aad: Option<Vec<u8>>,
+    padding: AesEncryptionPadding,
     for_encryption: bool,
 ) -> Result<Vec<u8>> {
-    let ciphertext = match key.len() {
+    match key.len() {
         16 => encrypt_or_decrypt_aes_inner::<Aes128>(
             mode,
-            input,
+            plaintext,
             key,
-            padding,
             iv,
             aad,
+            padding,
             for_encryption,
-        )?,
+        ),
         32 => encrypt_or_decrypt_aes_inner::<Aes256>(
             mode,
-            input,
+            plaintext,
             key,
-            padding,
             iv,
             aad,
+            padding,
             for_encryption,
-        )?,
-        _ => {
-            return Err(Error::Unsupported(format!("keysize {}", key.len())));
-        }
-    };
-    Ok(ciphertext)
+        ),
+        _ => Err(Error::Unsupported(format!("keysize {}", key.len()))),
+    }
 }
 
 fn encrypt_or_decrypt_aes_inner<C>(
     mode: EncryptionMode,
     plaintext: &[u8],
     key: &[u8],
-    padding: AesEncryptionPadding,
     iv: Option<Vec<u8>>,
     aad: Option<Vec<u8>>,
+    padding: AesEncryptionPadding,
     for_encryption: bool,
 ) -> Result<Vec<u8>>
 where
@@ -219,39 +251,55 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::{encrypt_or_decrypt_aes, generate_aes};
-    use crate::helper::{
-        common::random_bytes,
-        enums::{AesEncryptionPadding, EncryptionMode},
+    use super::generate_aes;
+    use crate::{
+        crypto::aes::{crypto_aes, generate_iv, AesEncryptoinDto},
+        utils::{
+            common::random_bytes,
+            enums::{AesEncryptionPadding, EncryptionMode, TextEncoding},
+        },
     };
 
     #[test]
     fn test_aes_gcm_generate_and_encryption() {
         for key_size in [128, 256] {
-            let plaintext = b"plaintext";
-            let key = generate_aes(key_size).unwrap();
-            let iv = random_bytes(12).unwrap();
-            let ciphertext = encrypt_or_decrypt_aes(
-                EncryptionMode::Gcm,
-                &key,
-                plaintext,
-                AesEncryptionPadding::NoPadding,
-                Some(iv.to_vec()),
-                None,
-                true,
-            )
+            let plaintext = "plaintext";
+            let encoding = TextEncoding::Base64;
+            let key = generate_aes(key_size, encoding).unwrap();
+            let iv = generate_iv(12, encoding).unwrap();
+            let aad_bytes = random_bytes(128).unwrap();
+            let aad = encoding.encode(&aad_bytes).unwrap();
+            let ciphertext = crypto_aes(AesEncryptoinDto {
+                input: plaintext.to_string(),
+                input_encoding: TextEncoding::Utf8,
+                key: key.to_string(),
+                key_encoding: encoding,
+                output_encoding: encoding,
+                mode: EncryptionMode::Gcm,
+                padding: AesEncryptionPadding::NoPadding,
+                iv: Some(iv.to_string()),
+                iv_encoding: Some(encoding),
+                aad: Some(aad.to_string()),
+                aad_encoding: Some(encoding),
+                for_encryption: true,
+            })
             .unwrap();
             assert_eq!(
-                plaintext.to_vec(),
-                encrypt_or_decrypt_aes(
-                    EncryptionMode::Gcm,
-                    &key,
-                    &ciphertext,
-                    AesEncryptionPadding::NoPadding,
-                    Some(iv.to_vec()),
-                    None,
-                    false,
-                )
+                plaintext,
+                crypto_aes(AesEncryptoinDto {
+                    input: ciphertext,
+                    input_encoding: encoding,
+                    key,
+                    key_encoding: encoding,
+                    output_encoding: TextEncoding::Utf8,
+                    mode: EncryptionMode::Gcm,
+                    padding: AesEncryptionPadding::NoPadding,
+                    iv: Some(iv),
+                    iv_encoding: Some(encoding),
+                    aad: Some(aad),
+                    aad_encoding: Some(encoding),
+                    for_encryption: false
+                })
                 .unwrap()
             )
         }

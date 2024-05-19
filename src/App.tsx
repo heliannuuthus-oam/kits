@@ -31,7 +31,7 @@ const App: React.FC = () => (
 				width="25%"
 			/>
 			<Layout>
-				<Content style={{ marginLeft: "25%", height: "100vh" }} />
+				<Content style={{ marginLeft: "25%", height: "100%" }} />
 			</Layout>
 		</Layout>
 	</Flex>

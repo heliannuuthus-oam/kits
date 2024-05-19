@@ -8,7 +8,7 @@ mod tests {
     use tracing::info;
     use tracing_test::traced_test;
 
-    use crate::helper::common::random_bytes;
+    use crate::utils::common::random_bytes;
 
     #[test]
     #[traced_test]
