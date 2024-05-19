@@ -126,6 +126,9 @@ pub fn pkcs8_sec1_converter(
                 input, from, to, is_public,
             )
         }
+        EccCurveName::SM2 => {
+            pkcs8_sec1_converter_inner::<sm2::Sm2>(input, from, to, is_public)
+        }
     }
 }
 
