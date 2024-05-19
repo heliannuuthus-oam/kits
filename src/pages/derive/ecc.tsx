@@ -55,15 +55,18 @@ export const EccDeriveKey = () => {
 
 	const derivePublicKey = async () => {
 		try {
-			const { privateKey, pkcsFormat, encoding } = form.getFieldsValue([
-				"privateKey",
-				"pkcsFormat",
-				"encoding",
-			]);
+			const { curveName, privateKey, pkcsFormat, encoding } =
+				form.getFieldsValue([
+					"curveName",
+					"privateKey",
+					"pkcsFormat",
+					"encoding",
+				]);
 			const pkcs = PkcsFormats[pkcsFormat as PkcsFormat];
 			pkcs.setEncoding(encoding as TextEncoding);
 			const publicKey = await invoke<string>("derive_ecc", {
-				key: privateKey,
+				curveName,
+				input: privateKey,
 				...pkcs,
 			});
 			form.setFieldsValue({ publicKey });
