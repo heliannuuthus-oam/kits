@@ -76,7 +76,7 @@ pub fn ecies_edwards(data: EciesEdwardsDto) -> Result<String> {
             data.for_encryption,
         ),
     }?;
-    Ok(output_encoding.encode(&output)?)
+    output_encoding.encode(&output)
 }
 
 #[tauri::command]
@@ -204,7 +204,7 @@ fn curve_25519_ecies_encrypt(
     );
     let encrypted = crypto::aes::encrypt_or_decrypt_aes(
         EncryptionMode::Gcm,
-        &input,
+        input,
         secret,
         Some(iv.to_vec()),
         None,

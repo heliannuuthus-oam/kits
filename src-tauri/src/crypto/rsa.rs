@@ -94,8 +94,8 @@ fn to_padding(
             let digest = digest.as_ref().unwrap_or(&Digest::Sha256);
             let mgf_digest = mgf_digest.as_ref().unwrap_or(&Digest::Sha256);
             RsaPaddingScheme::Oaep(rsa::Oaep {
-                digest: digest.to_digest(),
-                mgf_digest: mgf_digest.to_digest(),
+                digest: digest.as_digest(),
+                mgf_digest: mgf_digest.as_digest(),
                 label: None,
             })
         }
