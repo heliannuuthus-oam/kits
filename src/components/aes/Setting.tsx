@@ -1,7 +1,6 @@
 import { invoke } from "@tauri-apps/api";
 import {
 	Button,
-	Collapse,
 	Flex,
 	Form,
 	Select,
@@ -18,7 +17,7 @@ import { createStyles } from "antd-style";
 import { useState } from "react";
 import { CaretRightOutlined } from "@ant-design/icons";
 import { writeText } from "@tauri-apps/api/clipboard";
-
+import Collapse from "../Collapse";
 const useStyles = createStyles(({ css }) => ({
 	container: css`
 		.ant-tabs-nav-list {

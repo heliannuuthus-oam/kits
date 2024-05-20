@@ -1,7 +1,6 @@
-import { Form, Select } from "antd";
+import { Form, Select, SelectProps } from "antd";
 import {
 	edwardPkcsConverter,
-	edwardsCurveNames,
 	edwardsEncodingConverter,
 } from "../converter/converter";
 import { EdwardsPkcsSelect } from "./EdwardsPkcsSelect";
@@ -11,12 +10,21 @@ import {
 	derviceKeyConfigButtonHeight,
 	derviceKeyConfigButtonWidth,
 } from "../../pages/derive";
-import { EdwardsDeriveKeyForm } from ".";
+import { useEffect, useState } from "react";
+import { getEdwardsCurveNames } from ".";
 
 export const EdwardsKeyDeriveConfiguration = ({
+	form,
 	generating,
 }: KeyDeriveConfigProps) => {
-	const form = Form.useFormInstance<EdwardsDeriveKeyForm>();
+	const [curveNames, setCurveNames] = useState<SelectProps["options"]>([]);
+
+	useEffect(() => {
+		getEdwardsCurveNames().then((curveNames) => {
+			setCurveNames(curveNames);
+			form.setFieldsValue({ curveName: curveNames?.[0].value });
+		});
+	}, [getEdwardsCurveNames, setCurveNames]);
 
 	return (
 		<>
@@ -65,7 +73,7 @@ export const EdwardsKeyDeriveConfiguration = ({
 			<Form.Item name="curveName" label="curve name">
 				<Select
 					disabled={generating}
-					options={edwardsCurveNames}
+					options={curveNames}
 					style={{
 						minWidth: derviceKeyConfigButtonWidth,
 						minHeight: derviceKeyConfigButtonHeight,

@@ -1,22 +1,29 @@
-import { Form, Select } from "antd";
+import { Form, Select, SelectProps } from "antd";
 import { EccPkcsSelect } from "./EccPkcsSelect";
-import {
-	eccCurveNames,
-	eccEncodingConverter,
-	eccPkcsConverter,
-} from "../converter/converter";
+import { eccEncodingConverter, eccPkcsConverter } from "../converter/converter";
 import { EccEncodingSelect } from "./EccEncodingSelect";
 import {
 	KeyDeriveConfigProps,
 	derviceKeyConfigButtonHeight,
 	derviceKeyConfigButtonWidth,
 } from "../../pages/derive";
-import { EccKeyDeriveForm } from ".";
+import { useEffect, useState } from "react";
+import { getEccCurveNames } from ".";
 
 export const EccKeyDeriveConfiguration = ({
+	form,
 	generating,
 }: KeyDeriveConfigProps) => {
-	const form = Form.useFormInstance<EccKeyDeriveForm>();
+	const [eccCurveNames, setEccCurveNames] = useState<SelectProps["options"]>(
+		[]
+	);
+
+	useEffect(() => {
+		getEccCurveNames().then((curveNames) => {
+			setEccCurveNames(curveNames);
+			form.setFieldsValue({ curveName: curveNames?.[0].value });
+		});
+	}, [getEccCurveNames, setEccCurveNames]);
 
 	return (
 		<>

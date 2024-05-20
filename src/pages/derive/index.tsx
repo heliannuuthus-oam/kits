@@ -1,7 +1,6 @@
 import {
 	Button,
 	Col,
-	Collapse,
 	Flex,
 	Form,
 	FormInstance,
@@ -39,6 +38,7 @@ import {
 	EdwardsCurveName,
 	Pkcs8Format,
 } from "../../components/converter/converter";
+import Collapse from "../../components/Collapse";
 
 export type KeyDerivationProps<T> = {
 	form: FormInstance<T>;
@@ -51,10 +51,14 @@ export type KeyDerivationProps<T> = {
 		form: FormInstance<T>,
 		setGenerating: (generating: boolean) => void
 	) => Promise<void>;
-	configuration: ({ generating }: KeyDeriveConfigProps) => React.JSX.Element;
+	configuration: ({
+		form,
+		generating,
+	}: KeyDeriveConfigProps) => React.JSX.Element;
 };
 
 export type KeyDeriveConfigProps = {
+	form: FormInstance;
 	generating: boolean;
 };
 
@@ -222,19 +226,18 @@ const KeyDerivationInner = <T,>({
 							generate
 						</Button>
 						<Collapse
-							ghost
 							items={[
 								{
 									key: "higher configuration",
 									label: "configuration",
-									children: configuration({ generating }),
+									children: configuration({ form, generating }),
 								},
 							]}
 						/>
 					</Flex>
 				</Col>
 				<Col span={9}>
-					<Form.Item name="publicKey" rules={keyValidator}>
+					<Form.Item name="publicKey">
 						<DefaultTextArea
 							disabled={generating}
 							style={{ height: derviceKeyConfigHeight }}

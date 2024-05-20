@@ -1,149 +1,154 @@
-import { invoke } from "@tauri-apps/api";
 import {
 	Button,
 	Col,
-	Flex,
 	Form,
 	FormRule,
 	Row,
 	Select,
 	SelectProps,
-	Typography,
+	Tabs,
 } from "antd";
 import TextArea, { TextAreaProps } from "antd/es/input/TextArea";
-import { useRef, useState } from "react";
-import {
-	TextCodecRef,
-	TextEncoding,
-	textCodecor,
-} from "../../components/codec/codec";
 
-import { TextRadioCodec } from "../../components/codec/TextCodecRadio";
-import { TextSelectCodec } from "../../components/codec/TextCodecSelect";
-import {
-	Pkcs8Format,
-	PkcsFormats,
-	eccPkcsConverter,
-	EccCurveName,
-	ConvertRef,
-	PkcsFormat,
-} from "../../components/converter/converter";
-import { EccPkcsSelect } from "../../components/ecc/EccPkcsSelect";
+import { invoke } from "@tauri-apps/api";
+import { FormInstance, useWatch } from "antd/es/form/Form";
+import { useEffect, useState } from "react";
+import Collapse from "../../components/Collapse";
+import { FormLabel } from "../../components/FormLabel";
+import { TextEncoding } from "../../components/codec/codec";
+import { getEccCurveNames } from "../../components/ecc";
+import { EciesEncryptionForm, EciesKdf } from "../../components/ecc/kdf";
+import { writeText } from "@tauri-apps/api/clipboard";
+import useMessage from "antd/es/message/useMessage";
 
 const DefaultTextArea = ({ style, ...props }: TextAreaProps) => {
 	return <TextArea {...props} style={{ resize: "none", ...style }}></TextArea>;
 };
 
-type EciesEncryptionForm = {
-	privateKey: string;
-	publicKey: string;
-	input: string | null;
-	output: string | null;
-};
-
 const initialValues: EciesEncryptionForm = {
+	curveName: "",
 	privateKey: "",
 	publicKey: "",
 	input: null,
+	inputEncoding: TextEncoding.UTF8,
 	output: null,
+	outputEncoding: TextEncoding.Base64,
+	kdf: "",
+	kdfDigest: "",
+	salt: null,
+	saltEncoding: null,
+	info: null,
+	infoEncoding: null,
+	encryptionAlg: "",
+	forEncryption: true,
 };
 
-const curveNames: SelectProps["options"] = (
-	Object.keys(EccCurveName) as Array<keyof typeof EccCurveName>
-).map((key) => {
-	return {
-		value: EccCurveName[key],
-		label: <span>{EccCurveName[key].toString()}</span>,
-	};
-});
+type KeyInfo = {
+	curveName: string;
+	encoding: string;
+	format: string;
+	pkcs: string;
+};
 
 const size = "middle";
-const keyHeight = 200;
-const keyButtonHeight = 32;
-const keyButtonWidth = 120;
-const EciesEncryption = () => {
-	const [form] = Form.useForm<EciesEncryptionForm>();
-	const [curveName, setCurveName] = useState<EccCurveName>(
-		EccCurveName.NIST_P256
-	);
-	const [generating, setGenerating] = useState<boolean>(false);
-	const pkiKeyCodecEl = useRef<ConvertRef>(null);
-	const keyCodecEl = useRef<TextCodecRef>(null);
-	const inputCodecEl = useRef<TextCodecRef>(null);
-	const outputCodecEl = useRef<TextCodecRef>(null);
+// -----BEGIN PRIVATE KEY-----
+// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgokjPfi1cSxThBzWZ
+// 8dSxpOIfkOV6sgN/hT/+/t76m3ehRANCAATcwSHkRb45uvJJWY8IGYXI+dtXv5Vt
+// GOmNNG3f53dM0gjN8TFNrF0bdkmJCUpCh2nBj+OxX4At8b8dpTLSzBil
+// -----END PRIVATE KEY-----
+
+// -----BEGIN PUBLIC KEY-----
+// MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3MEh5EW+ObrySVmPCBmFyPnbV7+V
+// bRjpjTRt3+d3TNIIzfExTaxdG3ZJiQlKQodpwY/jsV+ALfG/HaUy0swYpQ==
+// -----END PUBLIC KEY-----
+
+const EciesInner = ({ form }: { form: FormInstance }) => {
+	const [curveNames, setCurveNames] = useState<SelectProps["options"]>([]);
+	const [msg, context] = useMessage({
+		duration: 4,
+		maxCount: 1,
+	});
+
+	useEffect(() => {
+		getEccCurveNames().then((curveNames) => {
+			setCurveNames(curveNames);
+			form.setFieldsValue({ curveName: curveNames?.[0].value });
+		});
+	}, [getEccCurveNames, setCurveNames, form]);
 
 	const keyValidator: FormRule[] = [
 		{ required: true, message: "key is required" },
 	];
-
 	const inputValidator: FormRule[] = [
 		{ required: true, message: "input is required" },
 	];
+	const forEncryption = useWatch("forEncryption", { form, preserve: true });
 
-	const _getPrivateKey = async (): Promise<Uint8Array> => {
-		const encoding = keyCodecEl.current?.getEncoding() || TextEncoding.Base64;
-		return await textCodecor.decode(encoding, form.getFieldValue("privateKey"));
-	};
-
-	const _derivePublicKey = async (
-		key: Uint8Array | null
-	): Promise<Uint8Array> => {
-		if (key == null) {
-			key = await _getPrivateKey();
-		}
-		const pkcs8Encoding: PkcsFormat =
-			form.getFieldValue("encoding") || Pkcs8Format.PKCS8_PEM;
-
-		const { pkcs, encoding } = PkcsFormats[pkcs8Encoding];
-
-		return await invoke<Uint8Array>("derive_ecc", {
-			curveName: curveName,
-			input: key,
-			pkcs,
-			encoding,
+	const parseEccKey = async (input: string): Promise<KeyInfo> => {
+		return await invoke<KeyInfo>("parse_ecc", {
+			input,
 		});
 	};
 
-	const derivePublicKey = async () => {
+	const encryptOrDecrypt = async () => {
 		try {
-			setGenerating(true);
-			const publicKeyBytes = await _derivePublicKey(null);
-			const encoding = keyCodecEl.current?.getEncoding() || TextEncoding.Base64;
-			const publicKey = await textCodecor.encode(encoding, publicKeyBytes);
-			form.setFieldsValue({ publicKey });
+			const key = form.getFieldValue(
+				!forEncryption ? "privateKey" : "publicKey"
+			);
+			console.log(form.getFieldsValue(true));
+			const keyInfo = await parseEccKey(key);
+			const output = await invoke<string>("ecies", {
+				data: {
+					...form.getFieldsValue(true),
+					...keyInfo,
+					key: key,
+					keyEncoding: keyInfo.encoding,
+					keyFormat: keyInfo.format,
+				},
+			});
+			form.setFieldsValue({ output });
+			if (output.length > 0 && output.length < 4096) {
+				await writeText(output);
+				msg.success("copied output");
+			}
 		} catch (error) {
 			console.log(error);
 		}
-		setGenerating(false);
 	};
 
-	const generatePrivateKey = async () => {
-		setGenerating(true);
-		try {
-			const pkcs8Encoding: PkcsFormat =
-				form.getFieldValue("encoding") || Pkcs8Format.PKCS8_PEM;
-			const [privateKeyBytes, publicKeyBytes] = await invoke<Uint8Array[]>(
-				"generate_ecc",
-				{
-					curveName,
-					...PkcsFormats[pkcs8Encoding],
-				}
-			);
+	const renderKey = (data: string) => {
+		return (
+			<Form.Item key="key">
+				<Row align={"middle"}>
+					<Col span={11}>
+						<Form.Item
+							key={data}
+							name={data}
+							label={
+								<FormLabel
+									children={data.charAt(0).toUpperCase() + data.slice(1)}
+								/>
+							}
+							rules={keyValidator}
+							tooltip="Only pkcs8 format is allowed"
+						>
+							<DefaultTextArea size={size} showCount style={{ height: 150 }} />
+						</Form.Item>
+					</Col>
 
-			const encoding = keyCodecEl.current?.getEncoding() || TextEncoding.Base64;
-			const [publicKey, privateKey] = await Promise.all([
-				textCodecor.encode(encoding, publicKeyBytes),
-				textCodecor.encode(encoding, privateKeyBytes),
-			]);
-
-			form.setFieldsValue({
-				publicKey,
-				privateKey,
-			});
-		} catch (err) {
-			console.log(err);
-		}
-		setGenerating(false);
+					<Col offset={1} span={11}>
+						<Form.Item
+							key="input"
+							name="input"
+							label={<FormLabel children="Input" />}
+							rules={inputValidator}
+						>
+							<DefaultTextArea size={size} showCount style={{ height: 150 }} />
+						</Form.Item>
+					</Col>
+				</Row>
+			</Form.Item>
+		);
 	};
 
 	return (
@@ -156,162 +161,97 @@ const EciesEncryption = () => {
 			colon={true}
 			validateTrigger="onBlur"
 		>
-			<Form.Item key="input">
-				<Flex
-					align="center"
-					justify="space-between"
-					style={{ padding: "24px 0 24px 0" }}
-				>
-					<Typography.Title level={5} style={{ margin: 0 }}>
-						Input
-					</Typography.Title>
-					<TextRadioCodec
-						codecor={textCodecor}
-						ref={inputCodecEl}
-						size={size}
-						defaultValue={TextEncoding.UTF8}
-						setInputs={(inputs: Record<string, string>) =>
-							form.setFieldsValue(inputs)
-						}
-						getInputs={() => form.getFieldsValue(["input"])}
-					/>
-				</Flex>
-				<Form.Item key="input" name="input" rules={inputValidator}>
-					<DefaultTextArea showCount style={{ height: 150 }}></DefaultTextArea>
-				</Form.Item>
-			</Form.Item>
-
-			<Form.Item key="key">
-				<Row justify="space-between" align="top">
-					<Col span={10}>
-						<Flex
-							align="center"
-							justify="space-between"
-							style={{ padding: "0 0 24px 0" }}
-						>
-							<Typography.Title level={5} style={{ margin: 0 }}>
-								PrivateKey
-							</Typography.Title>
-						</Flex>
-						<Form.Item name="privateKey" rules={keyValidator}>
-							<DefaultTextArea
-								disabled={generating}
-								style={{ height: keyHeight }}
-							/>
-						</Form.Item>
-					</Col>
-					<Col span={4} style={{ padding: "0 15px" }}>
-						<Flex
-							gap={22}
-							justify="start"
-							vertical
-							style={{ height: keyHeight }}
-						>
-							<Form.Item noStyle name="encoding">
-								<EccPkcsSelect
-									converter={eccPkcsConverter}
-									disabled={generating}
-									style={{
-										minWidth: keyButtonWidth,
-										minHeight: keyButtonHeight,
-									}}
-									getInputs={() =>
-										form.getFieldsValue(["privateKey", "publicKey"])
-									}
-									setInputs={(inputs) => {
-										form.setFieldsValue(inputs);
-									}}
-									ref={pkiKeyCodecEl}
-								/>
-							</Form.Item>
-							<TextSelectCodec
-								ref={keyCodecEl}
-								codecor={textCodecor}
-								getInputs={() =>
-									form.getFieldsValue(["privateKey", "publicKey"])
-								}
-								setInputs={form.setFieldsValue}
-								disabled={generating}
-								style={{
-									minWidth: keyButtonWidth,
-									minHeight: keyButtonHeight,
-								}}
-								defaultValue={TextEncoding.UTF8}
-							/>
-							<Button
-								loading={generating}
-								onClick={derivePublicKey}
-								disabled={generating}
-								style={{ minWidth: keyButtonWidth, minHeight: keyButtonHeight }}
-								type="primary"
-							>
-								derive
-							</Button>
-							<Select
-								disabled={generating}
-								value={curveName}
-								onChange={(value) => {
-									setCurveName(value);
-								}}
-								options={curveNames}
-								style={{ minWidth: keyButtonWidth, minHeight: keyButtonHeight }}
-							/>
-
-							<Button
-								loading={generating}
-								type="primary"
-								onClick={generatePrivateKey}
-								style={{ minWidth: keyButtonWidth, minHeight: keyButtonHeight }}
-							>
-								generate
-							</Button>
-						</Flex>
-					</Col>
-					<Col span={10}>
-						<Flex
-							align="center"
-							justify="space-between"
-							style={{ padding: "0 0 24px 0" }}
-						>
-							<Typography.Title level={5} style={{ margin: 0 }}>
-								PublicKey
-							</Typography.Title>
-						</Flex>
-						<Form.Item name="publicKey" rules={keyValidator}>
-							<DefaultTextArea
-								disabled={generating}
-								style={{ height: keyHeight }}
-							/>
-						</Form.Item>
+			{context}
+			{renderKey(!forEncryption ? "privateKey" : "publicKey")}
+			<Row align={"middle"}>
+				<Col offset={9} span={6}>
+					<Form.Item name="curveName">
+						<Select options={curveNames} />
+					</Form.Item>
+				</Col>
+			</Row>
+			<Form.Item key="kdf">
+				<Row align={"middle"}>
+					<Col offset={5} span={14}>
+						<Collapse
+							items={[
+								{
+									key: "kdfConfig",
+									label: "key derive function configuration",
+									children: <EciesKdf />,
+									forceRender: true,
+									extra: (
+										<Button
+											children={!forEncryption ? "decrypt" : "encrypt"}
+											onClick={async (e) => {
+												e.stopPropagation();
+												await encryptOrDecrypt();
+											}}
+										/>
+									),
+								},
+							]}
+						/>
 					</Col>
 				</Row>
 			</Form.Item>
-
-			<Form.Item key="output">
-				<Flex
-					align="center"
-					justify="space-between"
-					style={{ padding: "0 0 24px 0" }}
-				>
-					<Typography.Title level={5} style={{ margin: 0 }}>
-						Output
-					</Typography.Title>
-					<TextRadioCodec
-						codecor={textCodecor}
-						ref={outputCodecEl}
-						size={size}
-						defaultValue={TextEncoding.Base64}
-						setInputs={(inputs: Record<string, string>) =>
-							form.setFieldsValue(inputs)
-						}
-						getInputs={() => form.getFieldsValue(["output"])}
-					/>
-				</Flex>
-				<Form.Item key="output" name="output">
-					<DefaultTextArea style={{ height: 150 }} showCount></DefaultTextArea>
-				</Form.Item>
-			</Form.Item>
+			<Row align={"middle"}>
+				<Col offset={5} span={14}>
+					<Form.Item
+						key="output"
+						name="output"
+						label={<FormLabel children="Output" />}
+					>
+						<DefaultTextArea style={{ height: 249 }} />
+					</Form.Item>
+				</Col>
+			</Row>
 		</Form>
+	);
+};
+
+const EciesEncryption = () => {
+	const [form] = Form.useForm<EciesEncryptionForm>();
+
+	return (
+		<Tabs
+			centered
+			defaultActiveKey={"encryption"}
+			onChange={(key) => {
+				const forEncryption = key === "encryption";
+				if (forEncryption) {
+					form.setFieldsValue({
+						forEncryption,
+						output: null,
+						input: null,
+						inputEncoding: TextEncoding.UTF8,
+						outputEncoding: TextEncoding.Base64,
+					});
+				} else {
+					form.setFieldsValue({
+						forEncryption,
+						output: null,
+						input: null,
+						inputEncoding: TextEncoding.Base64,
+						outputEncoding: TextEncoding.UTF8,
+					});
+				}
+			}}
+			items={[
+				{
+					label: "encryption",
+					key: "encryption",
+					children: <EciesInner form={form} />,
+					forceRender: true,
+				},
+				{
+					label: "decryption",
+					key: "decryption",
+					children: <EciesInner form={form} />,
+					forceRender: true,
+				},
+			]}
+		/>
 	);
 };
 export default EciesEncryption;

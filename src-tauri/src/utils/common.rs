@@ -1,7 +1,13 @@
 use rand::{distributions::Alphanumeric, Rng};
 use serde::{Deserialize, Serialize};
+use strum::IntoEnumIterator;
 
-use super::errors::Result;
+use super::{
+    enums::{
+        Digest, EccCurveName, EciesEncryptionAlgorithm, EdwardsCurveName, Kdf,
+    },
+    errors::Result,
+};
 #[derive(Serialize, Deserialize)]
 pub struct KeyTuple(pub Option<String>, pub Option<String>);
 
@@ -31,4 +37,29 @@ pub fn random_bytes(size: usize) -> Result<Vec<u8>> {
         .sample_iter(&Alphanumeric)
         .take(size)
         .collect())
+}
+
+#[tauri::command]
+pub fn elliptic_curve() -> Vec<EccCurveName> {
+    EccCurveName::iter().collect::<Vec<EccCurveName>>()
+}
+
+#[tauri::command]
+pub fn edwards() -> Vec<EdwardsCurveName> {
+    EdwardsCurveName::iter().collect::<Vec<EdwardsCurveName>>()
+}
+
+#[tauri::command]
+pub fn kdfs() -> Vec<Kdf> {
+    Kdf::iter().collect::<Vec<Kdf>>()
+}
+
+#[tauri::command]
+pub fn digests() -> Vec<Digest> {
+    Digest::iter().collect::<Vec<Digest>>()
+}
+
+#[tauri::command]
+pub fn ecies_enc_alg() -> Vec<EciesEncryptionAlgorithm> {
+    EciesEncryptionAlgorithm::iter().collect::<Vec<EciesEncryptionAlgorithm>>()
 }

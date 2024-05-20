@@ -1,5 +1,6 @@
 use digest::{Digest as Di, DynDigest};
 use serde::{Deserialize, Serialize};
+use strum_macros::EnumIter;
 
 use super::{
     codec::{
@@ -9,7 +10,18 @@ use super::{
     errors::Result,
 };
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    EnumIter,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum EccCurveName {
     NistP256,
@@ -19,13 +31,35 @@ pub enum EccCurveName {
     SM2,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    EnumIter,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum EdwardsCurveName {
     Curve25519,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    EnumIter,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum EncryptionMode {
     Ecb,
@@ -33,7 +67,9 @@ pub enum EncryptionMode {
     Gcm,
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+#[derive(
+    Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum TextEncoding {
     Base64,
@@ -59,7 +95,9 @@ impl TextEncoding {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+#[derive(
+    Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum Pkcs {
     #[serde(rename = "pkcs8")]
     Pkcs8,
@@ -67,9 +105,13 @@ pub enum Pkcs {
     Pkcs1,
     #[serde(rename = "sec1")]
     Sec1,
+    #[serde(rename = "skpi")]
+    Spki,
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+#[derive(
+    Serialize, Deserialize, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum KeyFormat {
     #[serde(rename = "pem")]
     Pem,
@@ -77,13 +119,34 @@ pub enum KeyFormat {
     Der,
 }
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Copy,
+    Clone,
+    Debug,
+    EnumIter,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+)]
 pub enum EciesEncryptionAlgorithm {
-    #[serde(rename = "AES-256-GCM")]
-    Aes256Gcm,
+    #[serde(rename = "AES-GCM")]
+    AesGcm,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+impl EciesEncryptionAlgorithm {
+    pub fn as_encryption_mode(&self) -> EncryptionMode {
+        match self {
+            EciesEncryptionAlgorithm::AesGcm => EncryptionMode::Gcm,
+        }
+    }
+}
+
+#[derive(
+    Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum RsaEncryptionPadding {
     #[serde(rename = "pkcs1-v1_5")]
     Pkcs1v15,
@@ -91,13 +154,26 @@ pub enum RsaEncryptionPadding {
     Oaep,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(
+    Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum AesEncryptionPadding {
     Pkcs7Padding,
     NoPadding,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy)]
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    EnumIter,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+)]
 #[serde(rename_all = "kebab-case")]
 pub enum Digest {
     Sha1,
@@ -121,4 +197,24 @@ impl Digest {
             Digest::Sha3_512 => Box::new(sha3::Sha3_512::new()),
         }
     }
+}
+
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    EnumIter,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum Kdf {
+    HKdf,
+    Concatenation,
+    PbKdf2,
+    Scrypt,
 }

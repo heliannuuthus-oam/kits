@@ -1,4 +1,4 @@
-import { FormInstance } from "antd";
+import { FormInstance, SelectProps } from "antd";
 import {
 	EdwardsCurveName,
 	PkcsFormat,
@@ -6,6 +6,7 @@ import {
 } from "../converter/converter";
 import { invoke } from "@tauri-apps/api";
 import { TextEncoding } from "../codec/codec";
+import { fetchEdwardsCuveNames } from "../../api/edwards";
 
 export type EdwardsDeriveKeyForm = {
 	privateKey: string;
@@ -14,6 +15,21 @@ export type EdwardsDeriveKeyForm = {
 	encoding: TextEncoding;
 	curveName: EdwardsCurveName;
 };
+
+export const getEdwardsCurveNames = async (): Promise<
+	SelectProps["options"]
+> => {
+	try {
+		const formatted = await fetchEdwardsCuveNames();
+		return formatted.map((curveName) => ({
+			label: curveName,
+			value: curveName,
+		}));
+	} catch (error) {
+		console.log("load edwards curve name failed");
+	}
+};
+
 export const deriveEdwardsKey = async (
 	form: FormInstance<EdwardsDeriveKeyForm>,
 	setGenerating: (generating: boolean) => void

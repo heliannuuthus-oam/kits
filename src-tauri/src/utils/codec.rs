@@ -7,6 +7,7 @@ use elliptic_curve::{
     sec1::{FromEncodedPoint, ToEncodedPoint},
     AffinePoint, FieldBytesSize,
 };
+use pkcs8::{DecodePublicKey, EncodePublicKey};
 use sec1::point::ModulusSize;
 
 use super::{
@@ -160,7 +161,7 @@ where
                 )?;
                 match to.pkcs {
                     Pkcs::Pkcs8 => public_pkcs8_to_bytes(key, to.format),
-                    Pkcs::Sec1 => public_sec1_to_bytes::<C>(key),
+                    Pkcs::Sec1 => public_sec1_to_bytes::<C>(key, to.format),
                     _ => Err(Error::Unsupported(
                         "only supported ecc key".to_string(),
                     )),
@@ -181,10 +182,10 @@ where
         }
         Pkcs::Sec1 => {
             if is_public {
-                let key = public_bytes_to_sec1::<C>(input)?;
+                let key = public_bytes_to_sec1::<C>(input, from.format)?;
                 match to.pkcs {
                     Pkcs::Pkcs8 => public_pkcs8_to_bytes(key, to.format),
-                    Pkcs::Sec1 => public_sec1_to_bytes::<C>(key),
+                    Pkcs::Sec1 => public_sec1_to_bytes::<C>(key, to.format),
                     _ => Err(Error::Unsupported(
                         "only supported ecc key".to_string(),
                     )),
@@ -464,14 +465,25 @@ where
 
 pub(crate) fn public_bytes_to_sec1<C>(
     input: &[u8],
+    format: KeyFormat,
 ) -> Result<elliptic_curve::PublicKey<C>>
 where
     C: PointCompression + elliptic_curve::CurveArithmetic,
     AffinePoint<C>: FromEncodedPoint<C> + ToEncodedPoint<C>,
     FieldBytesSize<C>: ModulusSize,
+    elliptic_curve::PublicKey<C>: pkcs8::DecodePublicKey,
 {
-    Ok(elliptic_curve::PublicKey::<C>::from_sec1_bytes(input)
-        .context("invalid sec1 pem public key")?)
+    Ok(match format {
+        KeyFormat::Pem => {
+            let key =
+                String::from_utf8(input.to_vec()).context("".to_string())?;
+            elliptic_curve::PublicKey::<C>::from_public_key_pem(&key)
+        }
+        KeyFormat::Der => {
+            elliptic_curve::PublicKey::<C>::from_public_key_der(input)
+        }
+    }
+    .context("invalid sec1 pem public key")?)
 }
 
 pub(crate) fn private_sec1_to_bytes<E>(
@@ -497,11 +509,26 @@ where
 
 pub(crate) fn public_sec1_to_bytes<C>(
     input: elliptic_curve::PublicKey<C>,
+    format: KeyFormat,
 ) -> Result<Vec<u8>>
 where
     C: PointCompression + elliptic_curve::CurveArithmetic,
     AffinePoint<C>: FromEncodedPoint<C> + ToEncodedPoint<C>,
     FieldBytesSize<C>: ModulusSize,
+    elliptic_curve::PublicKey<C>: pkcs8::EncodePublicKey,
 {
-    Ok(input.to_sec1_bytes().to_vec())
+    Ok(match format {
+        KeyFormat::Pem => elliptic_curve::PublicKey::<C>::to_public_key_pem(
+            &input,
+            base64ct::LineEnding::LF,
+        )
+        .context("sec1 pem public key to bytes failed")?
+        .as_bytes()
+        .to_vec(),
+        KeyFormat::Der => {
+            elliptic_curve::PublicKey::<C>::to_public_key_der(&input)
+                .context("sec1 der public key to bytes failed")?
+                .to_vec()
+        }
+    })
 }
