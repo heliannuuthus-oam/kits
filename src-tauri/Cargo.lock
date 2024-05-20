@@ -1838,7 +1838,7 @@ dependencies = [
 
 [[package]]
 name = "kits"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -1872,6 +1872,7 @@ dependencies = [
  "sha1",
  "sha2",
  "sha3",
+ "sm2",
  "sm4",
  "spki",
  "tauri",
@@ -3271,6 +3272,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f92a496fb766b417c996b9c5e57daf2f7ad3b0bebe1ccfca4856390e3d3bb67"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "sm2"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98b22092ef242a118f03ee41dc46b2720c0ca076f544116dbc915cacf532cfaa"
+dependencies = [
+ "elliptic-curve",
+ "primeorder",
+ "rfc6979",
+ "signature",
+ "sm3",
+]
+
+[[package]]
+name = "sm3"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebb9a3b702d0a7e33bc4d85a14456633d2b165c2ad839c5fd9a8417c1ab15860"
+dependencies = [
+ "digest",
 ]
 
 [[package]]

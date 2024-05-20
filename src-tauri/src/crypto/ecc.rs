@@ -71,6 +71,7 @@ pub fn generate_ecc(
         EccCurveName::Secp256k1 => {
             generate_ecc_key::<k256::Secp256k1>(pkcs, format)
         }
+        EccCurveName::SM2 => generate_ecc_key::<sm2::Sm2>(pkcs, format),
     })?;
 
     Ok(KeyTuple::new(
@@ -100,6 +101,9 @@ pub fn derive_ecc(
         }
         EccCurveName::Secp256k1 => {
             derive_ecc_inner::<k256::Secp256k1>(&key_bytes, pkcs, format)
+        }
+        EccCurveName::SM2 => {
+            derive_ecc_inner::<sm2::Sm2>(&key_bytes, pkcs, format)
         }
     })?;
     encoding.encode(&public_key_bytes)
@@ -210,6 +214,14 @@ pub fn ecies(data: EciesDto) -> Result<String> {
             data.for_encryption,
         ),
         EccCurveName::Secp256k1 => ecies_inner::<k256::Secp256k1>(
+            &input,
+            &key,
+            data.pkcs,
+            data.key_format,
+            data.encryption_alg,
+            data.for_encryption,
+        ),
+        EccCurveName::SM2 => ecies_inner::<sm2::Sm2>(
             &input,
             &key,
             data.pkcs,
@@ -486,6 +498,7 @@ mod test {
             EccCurveName::NistP384,
             EccCurveName::NistP521,
             EccCurveName::Secp256k1,
+            EccCurveName::SM2,
         ] {
             info!("start test curve_name: {:?}", curve_name);
             let encoding = TextEncoding::Base64;

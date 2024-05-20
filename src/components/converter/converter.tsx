@@ -36,6 +36,7 @@ export enum EccCurveName {
 	NIST_P384 = "nistp384",
 	NIST_P521 = "nistp521",
 	Secp256k1 = "secp256k1",
+	SM2 = "sm2",
 }
 
 export enum EdwardsCurveName {
