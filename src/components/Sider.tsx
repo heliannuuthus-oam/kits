@@ -14,13 +14,20 @@ function Item(
 	children?: MenuItem[],
 	type?: "group"
 ): MenuItem {
-	return {
-		key,
-		icon,
-		children,
-		label,
-		type,
-	} as MenuItem;
+	return children && children.length > 0
+		? {
+				key,
+				icon,
+				children,
+				label,
+				type,
+			}
+		: ({
+				key,
+				icon,
+				label,
+				type,
+			} as MenuItem);
 }
 
 const chidren = (ros: RouteObject[], parent: string | undefined) => {
@@ -41,7 +48,9 @@ const menuItems: MenuProps["items"] = routes
 			<Link to={ro.path || "/"}>{ro.path}</Link>,
 			ro.path || 1,
 			null,
-			ro.children ? chidren(ro.children, ro.path) : []
+			ro.children && ro.children.length > 0
+				? chidren(ro.children, ro.path)
+				: undefined
 		);
 	});
 
