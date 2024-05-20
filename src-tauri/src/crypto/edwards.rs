@@ -48,11 +48,11 @@ pub fn generate_edwards(
 #[tauri::command]
 pub fn derive_edwards(
     curve_name: EdwardsCurveName,
-    private_key: String,
+    input: String,
     format: KeyFormat,
     encoding: TextEncoding,
 ) -> Result<String> {
-    let input = encoding.decode(&private_key)?;
+    let input = encoding.decode(&input)?;
 
     let public_key = match curve_name {
         EdwardsCurveName::Curve25519 => derive_curve_25519(&input, format),

@@ -12,5 +12,6 @@ jobs:
     uses: heliannuuthus/integrate-deploy/.github/workflows/call-rust.yml@master
     with:
       workdir: "./src-tauri"
+      toolchain: "nightly-2024-04-05"
   node:
     uses: heliannuuthus/integrate-deploy/.github/workflows/call-node.yml@master
