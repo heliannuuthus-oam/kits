@@ -15,13 +15,13 @@ function Item(
 	type?: "group"
 ): MenuItem {
 	return children && children.length > 0
-		? {
+		? ({
 				key,
 				icon,
 				children,
 				label,
 				type,
-			}
+			} as MenuItem)
 		: ({
 				key,
 				icon,
