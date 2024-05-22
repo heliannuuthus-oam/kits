@@ -23,6 +23,16 @@ pub struct PkcsDto {
 }
 
 #[tauri::command]
+pub fn convert_encoding(
+    input: String,
+    from: TextEncoding,
+    to: TextEncoding,
+) -> Result<String> {
+    let decoded = from.decode(&input)?;
+
+    to.encode(&decoded)
+}
+
 pub fn base64_encode(
     input: &[u8],
     unpadded: bool,
@@ -40,7 +50,6 @@ pub fn base64_encode(
     }
 }
 
-#[tauri::command]
 pub fn base64_decode(
     input: &str,
     unpadded: bool,
@@ -62,7 +71,6 @@ pub fn base64_decode(
     }
 }
 
-#[tauri::command]
 pub fn hex_encode(input: &[u8], uppercase: bool) -> Result<String> {
     if input.is_empty() {
         Ok("".to_string())
@@ -81,7 +89,6 @@ pub fn hex_encode(input: &[u8], uppercase: bool) -> Result<String> {
     }
 }
 
-#[tauri::command]
 pub fn hex_decode(input: &str, uppercase: bool) -> Result<Vec<u8>> {
     if input.is_empty() {
         Ok("".as_bytes().to_vec())
@@ -94,12 +101,10 @@ pub fn hex_decode(input: &str, uppercase: bool) -> Result<Vec<u8>> {
     }
 }
 
-#[tauri::command]
 pub fn string_encode(input: &[u8]) -> Result<String> {
     Ok(String::from_utf8(input.to_vec()).context("utf-8 encode failed")?)
 }
 
-#[tauri::command]
 pub fn string_decode(input: &str) -> Result<Vec<u8>> {
     Ok(input.as_bytes().to_vec())
 }

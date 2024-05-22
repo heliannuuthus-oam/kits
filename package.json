@@ -13,6 +13,7 @@
 		"@ant-design/icons": "^5.3.6",
 		"@tauri-apps/api": "^1",
 		"antd": "^5.16.0",
+		"antd-style": "^3.6.2",
 		"localforage": "^1.10.0",
 		"match-sorter": "^6.3.4",
 		"re-resizable": "^6.9.11",

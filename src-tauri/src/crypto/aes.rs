@@ -12,7 +12,7 @@ use aes_gcm::{aead::AeadMutInPlace, AesGcm, Nonce};
 use anyhow::Context;
 use block_padding::NoPadding;
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::{
     add_encryption_trait_impl,
@@ -66,7 +66,6 @@ pub fn generate_aes(key_size: usize, encoding: TextEncoding) -> Result<String> {
 }
 
 #[tauri::command]
-#[tracing::instrument(level = "debug")]
 pub fn crypto_aes(data: AesEncryptoinDto) -> Result<String> {
     info!(
         "aes crypto-> for_encryption: {} mode: {:?} padding: {:?}",
@@ -81,6 +80,7 @@ pub fn crypto_aes(data: AesEncryptoinDto) -> Result<String> {
         data.aad_encoding
             .map(|enc| enc.decode(association).unwrap_or_default())
     });
+    debug!("iv: {:?}, aad: {:?}", iv, aad);
     let key_bytes = data.get_key()?;
     let plaintext = data.get_input()?;
     let output_encoding = data.get_output_encoding();

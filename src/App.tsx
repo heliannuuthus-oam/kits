@@ -31,7 +31,13 @@ const App: React.FC = () => (
 				width="25%"
 			/>
 			<Layout>
-				<Content style={{ marginLeft: "25%", height: "100%" }} />
+				<Content
+					style={{
+						marginLeft: "25%",
+						height: "100%",
+						backgroundColor: "#fff",
+					}}
+				/>
 			</Layout>
 		</Layout>
 	</Flex>
