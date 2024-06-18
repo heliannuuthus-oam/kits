@@ -5,8 +5,8 @@ use anyhow::Context;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
 use utils::errors::Result;
 
-mod crypto;
-mod utils;
+pub mod crypto;
+pub mod utils;
 
 fn main() -> Result<()> {
     let file_appender = tracing_appender::rolling::daily("./log", "app.log");
@@ -33,23 +33,32 @@ fn main() -> Result<()> {
             // key generator
             crypto::aes::generate_aes,
             crypto::aes::generate_iv,
-            crypto::rsa::generate_rsa,
-            crypto::rsa::derive_rsa,
-            crypto::ecc::generate_ecc,
-            crypto::ecc::derive_ecc,
+            crypto::rsa::key::generate_rsa,
+            crypto::rsa::key::derive_rsa,
+            crypto::ecc::key::generate_ecc,
+            crypto::ecc::key::derive_ecc,
+            crypto::ecc::key::parse_ecc,
             crypto::ecc::ecies,
-            crypto::edwards::generate_edwards,
-            crypto::edwards::derive_edwards,
+            crypto::edwards::key::generate_edwards,
+            crypto::edwards::key::derive_edwards,
             crypto::edwards::ecies_edwards,
             // encrytion
             crypto::aes::crypto_aes,
             crypto::rsa::crypto_rsa,
             crypto::ecc::ecies,
             // format
-            crypto::rsa::transfer_rsa_key,
-            crypto::ecc::transfer_ecc_key,
-            crypto::edwards::transfer_edwards_key,
+            crypto::rsa::key::transfer_rsa_key,
+            crypto::ecc::key::transfer_ecc_key,
+            crypto::edwards::key::transfer_edwards_key,
+            // kdf
+            crypto::kdf::kdf,
+            // common
             utils::codec::convert_encoding,
+            utils::common::digests,
+            utils::common::elliptic_curve,
+            utils::common::edwards,
+            utils::common::kdfs,
+            utils::common::ecies_enc_alg,
         ])
         .run(tauri::generate_context!())
         .context("error while running tauri application")?;

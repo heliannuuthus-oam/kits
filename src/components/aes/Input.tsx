@@ -5,10 +5,8 @@ import {
 	Form,
 	FormRule,
 	Input,
-	Row,
 	Select,
 	Space,
-	Typography,
 	notification,
 } from "antd";
 import { useState } from "react";
@@ -17,10 +15,9 @@ import { EncryptionMode } from "./Setting";
 import { AesEncryptionForm } from "../../pages/encryption/aes";
 import useFormInstance from "antd/es/form/hooks/useFormInstance";
 import { useWatch } from "antd/es/form/Form";
+import { FormLabel } from "../FormLabel";
 
 const { TextArea } = Input;
-
-const { Title } = Typography;
 
 const size = "middle";
 
@@ -114,7 +111,7 @@ const AesInput = () => {
 		switch (mode) {
 			case EncryptionMode.CBC:
 				return (
-					<Form.Item key="cbc_iv">
+					<Form.Item key="cbc_iv" label={<FormLabel children="Iv" />}>
 						<IvInput />
 					</Form.Item>
 				);
@@ -122,11 +119,18 @@ const AesInput = () => {
 			case EncryptionMode.GCM:
 				return (
 					<>
-						<Form.Item key="gcm_iv" hasFeedback>
+						<Form.Item
+							key="gcm_iv"
+							label={<FormLabel children="Iv" />}
+							hasFeedback
+						>
 							<IvInput />
 						</Form.Item>
-						<Form.Item key="gcm_aad" name="aad">
-							<InputTitle content="Aad" />
+						<Form.Item
+							key="gcm_aad"
+							name="aad"
+							label={<FormLabel children="Aad" />}
+						>
 							<Input placeholder="input aad" />
 						</Form.Item>
 					</>
@@ -139,11 +143,9 @@ const AesInput = () => {
 	return (
 		<Col span={12}>
 			{notifyContextHodler}
-			<Form.Item key="key">
-				<InputTitle content="Key" />
+			<Form.Item key="key" label={<FormLabel children="Key" />}>
 				<Space.Compact size={size} style={{ width: "100%" }}>
 					<Form.Item
-						noStyle
 						name="key"
 						dependencies={["mode"]}
 						hasFeedback
@@ -166,8 +168,8 @@ const AesInput = () => {
 				</Space.Compact>
 			</Form.Item>
 			{renderExtract(mode)}
-			<InputTitle content="Input" />
-			<Form.Item key="input">
+
+			<Form.Item key="input" label={<FormLabel children="Input" />}>
 				<div
 					style={{
 						height: 200,
@@ -178,8 +180,8 @@ const AesInput = () => {
 					</Form.Item>
 				</div>
 			</Form.Item>
-			<InputTitle content="Output" />
-			<Form.Item key="output">
+
+			<Form.Item key="output" label={<FormLabel children="Output" />}>
 				<div
 					style={{
 						height: 200,
@@ -230,35 +232,20 @@ const IvInput = () => {
 	};
 
 	return (
-		<>
-			<InputTitle content="Iv" />
-			<Space.Compact size={size} style={{ width: "100%" }}>
-				<Form.Item
-					hasFeedback
-					noStyle
-					name="iv"
-					dependencies={["mode"]}
-					rules={ivValidator}
-				>
-					<Input placeholder="input iv" />
-				</Form.Item>
-				<Button style={{ margin: 0 }} onClick={generateIv}>
-					generate
-				</Button>
-			</Space.Compact>
-		</>
-	);
-};
-
-const InputTitle = ({ content }: { content: string }) => {
-	return (
-		<Row justify="space-between" align="middle">
-			<Col>
-				<Title style={{ margin: "0 0 12px 0" }} level={5}>
-					{content}:
-				</Title>
-			</Col>
-		</Row>
+		<Space.Compact size={size} style={{ width: "100%" }}>
+			<Form.Item
+				hasFeedback
+				noStyle
+				name="iv"
+				dependencies={["mode"]}
+				rules={ivValidator}
+			>
+				<Input placeholder="input iv" />
+			</Form.Item>
+			<Button style={{ margin: 0 }} onClick={generateIv}>
+				generate
+			</Button>
+		</Space.Compact>
 	);
 };
 

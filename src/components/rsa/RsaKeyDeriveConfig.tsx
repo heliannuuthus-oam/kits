@@ -7,7 +7,6 @@ import {
 	derviceKeyConfigButtonHeight,
 	derviceKeyConfigButtonWidth,
 } from "../../pages/derive";
-import { RsaKeyDeriveForm } from ".";
 
 const keySizes: SelectProps["options"] = [2048, 3072, 4096].map((bit) => {
 	return {
@@ -17,10 +16,9 @@ const keySizes: SelectProps["options"] = [2048, 3072, 4096].map((bit) => {
 });
 
 export const RsaKeyDeriveConfiguration = ({
+	form,
 	generating,
 }: KeyDeriveConfigProps) => {
-	const form = Form.useFormInstance<RsaKeyDeriveForm>();
-
 	return (
 		<>
 			<Form.Item name="pkcsFormat" label="pkcs format">

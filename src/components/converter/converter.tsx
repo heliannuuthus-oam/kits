@@ -145,7 +145,7 @@ export class RsaPkcsConverter extends Converter<PkcsEncodingProps> {
 			case from.pkcs === Pkcs.Pkcs1 && to.pkcs === Pkcs.Pkcs8:
 			case from.pkcs === Pkcs.Pkcs8 && to.pkcs === Pkcs.Pkcs8:
 			case from.pkcs === Pkcs.Pkcs1 && to.pkcs === Pkcs.Pkcs1:
-				return await invoke<string[]>("rsa_transfer_key", {
+				return await invoke<string[]>("transfer_rsa_key", {
 					privateKey,
 					publicKey,
 					from,
@@ -159,6 +159,25 @@ export class RsaPkcsConverter extends Converter<PkcsEncodingProps> {
 	}
 }
 
+export class EccPkcsConverter extends Converter<PkcsEncodingProps> {
+	async convert(
+		privateKey: string,
+		publicKey: string,
+		from: PkcsEncodingProps,
+		to: PkcsEncodingProps,
+		params?: Record<string, unknown>
+	): Promise<string[]> {
+		const curveName =
+			(params?.["curveName"] as EccCurveName) || EccCurveName.Secp256k1;
+		return await invoke<string[]>("transfer_ecc_key", {
+			curveName,
+			privateKey,
+			publicKey,
+			from,
+			to,
+		});
+	}
+}
 export class EdwardsPkcsConverter extends Converter<PkcsEncodingProps> {
 	async convert(
 		privateKey: string,
@@ -226,7 +245,8 @@ export class EdwardsEncodingConverter extends Converter<PkcsEncodingProps> {
 		params?: Record<string, unknown>
 	): Promise<string[]> {
 		const curveName =
-			(params?.["curveName"] as EccCurveName) || EccCurveName.Secp256k1;
+			(params?.["curveName"] as EdwardsCurveName) ||
+			EdwardsCurveName.Curve25519;
 		console.log(params);
 		return await invoke<string[]>("transfer_edwards_key", {
 			curveName,
@@ -255,7 +275,7 @@ export class TextEncodingConverter extends Converter<TextEncoding> {
 	}
 }
 export const rsaPkcsConverter = new RsaPkcsConverter();
-export const eccPkcsConverter = new EdwardsPkcsConverter();
+export const eccPkcsConverter = new EccPkcsConverter();
 export const edwardPkcsConverter = new EdwardsPkcsConverter();
 export const rsaEncodingConverter = new RsaEncodingConverter();
 export const eccEncodingConverter = new EccEncodingConverter();

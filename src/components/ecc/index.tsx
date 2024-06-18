@@ -1,7 +1,8 @@
-import { FormInstance } from "antd";
+import { FormInstance, SelectProps } from "antd";
 import { EccCurveName, PkcsFormat, PkcsFormats } from "../converter/converter";
 import { invoke } from "@tauri-apps/api";
 import { TextEncoding } from "../codec/codec";
+import { fetchCurveNames } from "../../api/ecc";
 
 export type EccKeyDeriveForm = {
 	privateKey: string;
@@ -10,6 +11,20 @@ export type EccKeyDeriveForm = {
 	encoding: TextEncoding;
 	curveName: EccCurveName;
 };
+
+export const getEccCurveNames = async (): Promise<SelectProps["options"]> => {
+	try {
+		const curveNames = await fetchCurveNames();
+		const formattedCurveNames = curveNames.map((curveName) => ({
+			label: curveName,
+			value: curveName,
+		}));
+		return formattedCurveNames;
+	} catch (e) {
+		console.log("ecc cuvename load failed", e);
+	}
+};
+
 export const deriveEccKey = async (
 	form: FormInstance<EccKeyDeriveForm>,
 	setGenerating: (generating: boolean) => void
