@@ -36,9 +36,9 @@ const initialValues: EciesEncryptionForm = {
 	kdf: "",
 	kdfDigest: "",
 	salt: null,
-	saltEncoding: null,
+	saltEncoding: TextEncoding.UTF8,
 	info: null,
-	infoEncoding: null,
+	infoEncoding: TextEncoding.UTF8,
 	encryptionAlg: "",
 	forEncryption: true,
 };
@@ -118,12 +118,14 @@ const EciesInner = ({ form }: { form: FormInstance }) => {
 
 	const renderKey = (data: string) => {
 		return (
-			<Form.Item key="key">
+			<Form.Item key="key" noStyle>
 				<Row align={"middle"}>
 					<Col span={11}>
 						<Form.Item
 							key={data}
 							name={data}
+							labelCol={{ span: 24 }}
+							wrapperCol={{ span: 24 }}
 							label={
 								<FormLabel
 									children={data.charAt(0).toUpperCase() + data.slice(1)}
@@ -140,6 +142,8 @@ const EciesInner = ({ form }: { form: FormInstance }) => {
 						<Form.Item
 							key="input"
 							name="input"
+							labelCol={{ span: 24 }}
+							wrapperCol={{ span: 24 }}
 							label={<FormLabel children="Input" />}
 							rules={inputValidator}
 						>
@@ -155,9 +159,8 @@ const EciesInner = ({ form }: { form: FormInstance }) => {
 		<Form
 			form={form}
 			initialValues={initialValues}
-			wrapperCol={{ span: 24 }}
 			style={{ padding: "0 24px" }}
-			layout="vertical"
+			layout="horizontal"
 			colon={true}
 			validateTrigger="onBlur"
 		>
@@ -170,9 +173,9 @@ const EciesInner = ({ form }: { form: FormInstance }) => {
 					</Form.Item>
 				</Col>
 			</Row>
-			<Form.Item key="kdf">
+			<Form.Item key="kdf" noStyle>
 				<Row align={"middle"}>
-					<Col offset={5} span={14}>
+					<Col offset={4} span={16}>
 						<Collapse
 							items={[
 								{
@@ -200,6 +203,8 @@ const EciesInner = ({ form }: { form: FormInstance }) => {
 					<Form.Item
 						key="output"
 						name="output"
+						labelCol={{ span: 24 }}
+						wrapperCol={{ span: 24 }}
 						label={<FormLabel children="Output" />}
 					>
 						<DefaultTextArea style={{ height: 249 }} />

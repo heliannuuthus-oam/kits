@@ -18,7 +18,8 @@ function ConvertSelectInner<T extends PkcsFormat>(
 		onChange,
 		...props
 	}: ConvertSelectProps<T, PkcsEncodingProps>,
-	_ref: ForwardedRef<ConvertRef>
+
+	_: ForwardedRef<ConvertRef>
 ) {
 	const [pkcsFormat, setPkcsFormat] = useState<T>(props.defaultValue);
 	const [messageApi, contextHolder] = message.useMessage({

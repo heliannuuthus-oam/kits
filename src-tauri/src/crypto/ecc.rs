@@ -19,7 +19,7 @@ use crate::{
             AesEncryptionPadding, Digest, EccCurveName,
             EciesEncryptionAlgorithm, Kdf, KeyFormat, Pkcs, TextEncoding,
         },
-        errors::Result,
+        errors::{Error, Result},
     },
 };
 

@@ -18,7 +18,7 @@ function ConvertSelectInner(
 		onChange,
 		...props
 	}: ConvertSelectProps<TextEncoding, PkcsEncodingProps>,
-	_ref: ForwardedRef<ConvertRef>
+	_: ForwardedRef<ConvertRef>
 ) {
 	const [encoding, setEncoding] = useState<TextEncoding>(props.defaultValue);
 	const [messageApi, contextHolder] = message.useMessage({

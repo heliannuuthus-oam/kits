@@ -264,7 +264,7 @@ export class TextEncodingConverter extends Converter<TextEncoding> {
 		_publicKey: string,
 		from: TextEncoding,
 		to: TextEncoding,
-		_params?: Record<string, unknown>
+		_?: Record<string, unknown>
 	): Promise<string[]> {
 		console.log(privateKey, from, to);
 		return await invoke<string[]>("convert_encoding", {
