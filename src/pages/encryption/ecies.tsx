@@ -83,6 +83,7 @@ const EciesInner = ({ form }: { form: FormInstance }) => {
 		{ required: true, message: "input is required" },
 	];
 	const forEncryption = useWatch("forEncryption", { form, preserve: true });
+	const activeKeys = useWatch("activeKeys", { form, preserve: true });
 
 	const parseEccKey = async (input: string): Promise<KeyInfo> => {
 		return await invoke<KeyInfo>("parse_ecc", {
@@ -177,6 +178,14 @@ const EciesInner = ({ form }: { form: FormInstance }) => {
 				<Row align={"middle"}>
 					<Col offset={4} span={16}>
 						<Collapse
+							onChange={(key) => {
+								if (key instanceof Array) {
+									form.setFieldsValue({ activeKeys: key });
+								} else {
+									form.setFieldsValue({ activeKeys: key });
+								}
+							}}
+							activeKey={activeKeys}
 							items={[
 								{
 									key: "kdfConfig",
@@ -217,7 +226,7 @@ const EciesInner = ({ form }: { form: FormInstance }) => {
 
 const EciesEncryption = () => {
 	const [form] = Form.useForm<EciesEncryptionForm>();
-
+	const inner = <EciesInner form={form} />;
 	return (
 		<Tabs
 			centered
@@ -246,13 +255,13 @@ const EciesEncryption = () => {
 				{
 					label: "encryption",
 					key: "encryption",
-					children: <EciesInner form={form} />,
+					children: inner,
 					forceRender: true,
 				},
 				{
 					label: "decryption",
 					key: "decryption",
-					children: <EciesInner form={form} />,
+					children: inner,
 					forceRender: true,
 				},
 			]}

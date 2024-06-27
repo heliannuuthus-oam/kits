@@ -62,7 +62,6 @@ export const AesSetting = () => {
 	const form = Form.useFormInstance<AesEncryptionForm>();
 
 	const { styles } = useStyles();
-	const [activeKeys, setActiveKeys] = useState<string[]>([]);
 	return (
 		<Tabs
 			className={styles.container}
@@ -70,7 +69,7 @@ export const AesSetting = () => {
 			tabPosition="left"
 			centered
 			onChange={(key) => {
-				form.setFieldsValue({ forEncryption: key === "encryption" });
+				form.setFieldsValue({ forEncryption: key === "encrypt" });
 				const { inputEncoding, outputEncoding } = form.getFieldsValue([
 					"inputEncoding",
 					"outputEncoding",
@@ -85,36 +84,22 @@ export const AesSetting = () => {
 					key: "encrypt",
 					tabKey: "encrypt",
 					label: "encrypt",
-					children: (
-						<AesSettingInner
-							activeKeys={activeKeys}
-							setActiveKeys={setActiveKeys}
-						/>
-					),
+					children: <AesSettingInner />,
+					forceRender: true,
 				},
 				{
 					key: "decrypt",
 					tabKey: "decrypt",
 					label: "decrypt",
-					children: (
-						<AesSettingInner
-							activeKeys={activeKeys}
-							setActiveKeys={setActiveKeys}
-						/>
-					),
+					children: <AesSettingInner />,
+					forceRender: true,
 				},
 			]}
 		/>
 	);
 };
 
-const AesSettingInner = ({
-	activeKeys,
-	setActiveKeys,
-}: {
-	activeKeys: string[];
-	setActiveKeys: (val: string[]) => void;
-}) => {
+const AesSettingInner = () => {
 	const form = Form.useFormInstance<AesEncryptionForm>();
 	const [msgApi, msgContext] = message.useMessage({
 		maxCount: 1,
@@ -125,6 +110,10 @@ const AesSettingInner = ({
 		preserve: true,
 	});
 	const mode = Form.useWatch("mode", {
+		form,
+		preserve: true,
+	});
+	const activeKeys = Form.useWatch("activeKeys", {
 		form,
 		preserve: true,
 	});
@@ -187,16 +176,8 @@ const AesSettingInner = ({
 			</Space.Compact>
 			<Collapse
 				onChange={(key) => {
-					if (key instanceof Array) {
-						setActiveKeys(key);
-					} else {
-						setActiveKeys([key]);
-					}
+					form.setFieldsValue({ activeKeys: key });
 				}}
-				expandIcon={({ isActive }) => (
-					<CaretRightOutlined rotate={isActive ? 90 : 0} />
-				)}
-				ghost
 				activeKey={activeKeys}
 				items={[
 					{

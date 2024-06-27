@@ -21,6 +21,7 @@ export type AesEncryptionForm = {
 	inputEncoding: TextEncoding;
 	outputEncoding: TextEncoding;
 	forEncryption: boolean;
+	activeKeys?: string[] | string;
 };
 
 export const aesComponentSize = "middle";
