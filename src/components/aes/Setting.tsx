@@ -14,8 +14,6 @@ import { textEncodings } from "../codec/codec";
 import { TextEncodingSelect } from "../converter/TextEncodingSelect";
 import { textEncodingConverter } from "../converter/converter";
 import { createStyles } from "antd-style";
-import { useState } from "react";
-import { CaretRightOutlined } from "@ant-design/icons";
 import { writeText } from "@tauri-apps/api/clipboard";
 import Collapse from "../Collapse";
 const useStyles = createStyles(({ css }) => ({
