@@ -13,7 +13,7 @@ function ConvertSelectInner(
 		onChange,
 		...props
 	}: ConvertSelectProps<TextEncoding, TextEncoding>,
-	_ref: ForwardedRef<ConvertRef>
+	_: ForwardedRef<ConvertRef>
 ) {
 	const [encoding, setEncoding] = useState<TextEncoding>(
 		value || TextEncoding.Base64
