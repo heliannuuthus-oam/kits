@@ -59,6 +59,7 @@ fn main() -> Result<()> {
             utils::common::edwards,
             utils::common::kdfs,
             utils::common::ecies_enc_alg,
+            utils::common::rsa_encryption_padding,
         ])
         .run(tauri::generate_context!())
         .context("error while running tauri application")?;

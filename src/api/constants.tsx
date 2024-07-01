@@ -1,13 +1,13 @@
 import { invoke } from "@tauri-apps/api";
 
-export const getKdfs = async (): Promise<string[]> => {
+export const fetchKdfs = async (): Promise<string[]> => {
 	return await invoke<string[]>("kdfs");
 };
 
-export const getDigests = async (): Promise<string[]> => {
+export const fetchDigests = async (): Promise<string[]> => {
 	return await invoke<string[]>("digests");
 };
 
-export const getEciesEncAlgs = async (): Promise<string[]> => {
+export const fetchEciesEncAlgs = async (): Promise<string[]> => {
 	return await invoke<string[]>("ecies_enc_alg");
 };

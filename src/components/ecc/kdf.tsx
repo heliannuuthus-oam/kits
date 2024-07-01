@@ -1,6 +1,10 @@
 import { Button, Form, Input, Select, Space } from "antd";
 import { useEffect, useState } from "react";
-import { getDigests, getEciesEncAlgs, getKdfs } from "../../api/constants";
+import {
+	fetchDigests,
+	fetchEciesEncAlgs,
+	fetchKdfs,
+} from "../../api/constants";
 import { TextEncoding, textEncodings } from "../codec/codec";
 import { textEncodingConverter } from "../converter/converter";
 import { TextEncodingSelect } from "../converter/TextEncodingSelect";
@@ -33,13 +37,13 @@ export const EciesKdf = () => {
 
 	const kdf = Form.useWatch("kdf", form);
 	useEffect(() => {
-		getKdfs().then((k) => {
+		fetchKdfs().then((k) => {
 			setKdfs(k);
 			form.setFieldsValue({
 				kdf: k[0],
 			});
 		});
-		getDigests().then((d) => {
+		fetchDigests().then((d) => {
 			d = d.slice(1);
 			setKdfDigests(d);
 			form.setFieldsValue({
@@ -47,16 +51,16 @@ export const EciesKdf = () => {
 			});
 		});
 
-		getEciesEncAlgs().then((d) => {
+		fetchEciesEncAlgs().then((d) => {
 			setEciesEncAlgs(d);
 			form.setFieldsValue({
 				encryptionAlg: d[0],
 			});
 		});
 	}, [
-		getKdfs,
-		getDigests,
-		getEciesEncAlgs,
+		fetchKdfs,
+		fetchDigests,
+		fetchEciesEncAlgs,
 		setKdfs,
 		setKdfDigests,
 		setEciesEncAlgs,

@@ -5,6 +5,7 @@ use strum::IntoEnumIterator;
 use super::{
     enums::{
         Digest, EccCurveName, EciesEncryptionAlgorithm, EdwardsCurveName, Kdf,
+        RsaEncryptionPadding,
     },
     errors::Result,
 };
@@ -62,4 +63,9 @@ pub fn digests() -> Vec<Digest> {
 #[tauri::command]
 pub fn ecies_enc_alg() -> Vec<EciesEncryptionAlgorithm> {
     EciesEncryptionAlgorithm::iter().collect::<Vec<EciesEncryptionAlgorithm>>()
+}
+
+#[tauri::command]
+pub fn rsa_encryption_padding() -> Vec<RsaEncryptionPadding> {
+    RsaEncryptionPadding::iter().collect::<Vec<RsaEncryptionPadding>>()
 }

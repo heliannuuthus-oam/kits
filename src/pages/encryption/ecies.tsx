@@ -51,17 +51,6 @@ type KeyInfo = {
 };
 
 const size = "middle";
-// -----BEGIN PRIVATE KEY-----
-// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgokjPfi1cSxThBzWZ
-// 8dSxpOIfkOV6sgN/hT/+/t76m3ehRANCAATcwSHkRb45uvJJWY8IGYXI+dtXv5Vt
-// GOmNNG3f53dM0gjN8TFNrF0bdkmJCUpCh2nBj+OxX4At8b8dpTLSzBil
-// -----END PRIVATE KEY-----
-
-// -----BEGIN PUBLIC KEY-----
-// MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3MEh5EW+ObrySVmPCBmFyPnbV7+V
-// bRjpjTRt3+d3TNIIzfExTaxdG3ZJiQlKQodpwY/jsV+ALfG/HaUy0swYpQ==
-// -----END PUBLIC KEY-----
-
 const EciesInner = ({ form }: { form: FormInstance }) => {
 	const [curveNames, setCurveNames] = useState<SelectProps["options"]>([]);
 	const [msg, context] = useMessage({
@@ -133,7 +122,6 @@ const EciesInner = ({ form }: { form: FormInstance }) => {
 								/>
 							}
 							rules={keyValidator}
-							tooltip="Only pkcs8 format is allowed"
 						>
 							<DefaultTextArea size={size} showCount style={{ height: 150 }} />
 						</Form.Item>
