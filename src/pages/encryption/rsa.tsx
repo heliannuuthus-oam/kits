@@ -1,14 +1,5 @@
 import { invoke } from "@tauri-apps/api";
-import {
-	Button,
-	Col,
-	Form,
-	FormInstance,
-	FormRule,
-	Row,
-	SelectProps,
-	Tabs,
-} from "antd";
+import { Button, Col, Form, FormInstance, FormRule, Row, Tabs } from "antd";
 import TextArea, { TextAreaProps } from "antd/es/input/TextArea";
 
 import { writeText } from "@tauri-apps/api/clipboard";
@@ -26,13 +17,6 @@ enum Padding {
 	Pkcs1_v15 = "pkcs1-v1_5",
 	Oaep = "oaep",
 }
-
-const keySizes: SelectProps["options"] = [2048, 3072, 4096].map((bit) => {
-	return {
-		value: bit,
-		label: <span>{bit}</span>,
-	};
-});
 
 const digestLength: Record<string, number> = {
 	sha1: 160,
