@@ -4,6 +4,7 @@ import TextArea, { TextAreaProps } from "antd/es/input/TextArea";
 
 import { writeText } from "@tauri-apps/api/clipboard";
 import useMessage from "antd/es/message/useMessage";
+import { useEffect, useState } from "react";
 import Collapse from "../../components/Collapse";
 import { FormLabel } from "../../components/FormLabel";
 import { TextEncoding } from "../../components/codec/codec";
@@ -72,13 +73,9 @@ type KeyInfo = {
 
 const size = "middle";
 
-const RsaEncryptionInner = ({
-	form,
-}: {
-	form: FormInstance<
-		RsaEncryptionForm | { activeKeys: string[] | string | null }
-	>;
-}) => {
+const RsaEncryptionInner = ({ form }: { form: FormInstance }) => {
+	const [inputMax, setInputMax] = useState<number>(0);
+
 	const [msg, context] = useMessage({
 		duration: 4,
 		maxCount: 1,
@@ -88,6 +85,7 @@ const RsaEncryptionInner = ({
 		form,
 		preserve: true,
 	});
+
 	const activeKeys = Form.useWatch("activeKeys", { form, preserve: true });
 
 	const calcEncryptionMaxLength = (): number => {
@@ -107,6 +105,11 @@ const RsaEncryptionInner = ({
 		}
 		return 0;
 	};
+
+	useEffect(() => {
+		setInputMax(calcEncryptionMaxLength());
+	}, [setInputMax, calcEncryptionMaxLength]);
+
 	const keyValidator: FormRule[] = [
 		{ required: true, message: "key is required" },
 	];
@@ -125,9 +128,10 @@ const RsaEncryptionInner = ({
 			const key = form.getFieldValue(
 				!forEncryption ? "privateKey" : "publicKey"
 			);
-			console.log(form.getFieldsValue(true));
+			console.log("key", key);
+
 			const keyInfo = await parseRsaKey(key);
-			const output = await invoke<string>("ecies", {
+			const output = await invoke<string>("crypto_rsa", {
 				data: {
 					...form.getFieldsValue(true),
 					...keyInfo,
@@ -177,7 +181,7 @@ const RsaEncryptionInner = ({
 							rules={inputValidator}
 						>
 							<DefaultTextArea
-								count={{ max: calcEncryptionMaxLength() }}
+								count={{ max: !forEncryption ? undefined : inputMax }}
 								size={size}
 								showCount
 								style={{ height: 150 }}
@@ -195,7 +199,7 @@ const RsaEncryptionInner = ({
 			initialValues={initialValues}
 			wrapperCol={{ span: 24 }}
 			style={{ padding: "0 24px" }}
-			layout="vertical"
+			layout="horizontal"
 			colon={true}
 			validateTrigger="onBlur"
 		>

@@ -287,10 +287,10 @@ where
             let key_string = String::from_utf8(input.to_vec())
                 .context("invalid utf-8 key")?;
             E::from_pkcs8_pem(&key_string)
-                .context("invalid sec1 pem private key")?
+                .context("invalid pkcs8 pem private key")?
         }
         KeyFormat::Der => {
-            E::from_pkcs8_der(input).context("invalid sec1 der private key")?
+            E::from_pkcs8_der(input).context("invalid pkcs8 der private key")?
         }
     })
 }
@@ -324,12 +324,12 @@ where
     Ok(match format {
         KeyFormat::Pem => input
             .to_pkcs8_pem(base64ct::LineEnding::LF)
-            .context("invalid pkcs8 pem private key")?
+            .context("invalid pkcs8 private key to pem")?
             .as_bytes()
             .to_vec(),
         KeyFormat::Der => input
             .to_pkcs8_der()
-            .context("invalid pkcs8 der private key")?
+            .context("invalid pkcs8 private key to der")?
             .as_bytes()
             .to_vec(),
     })
@@ -344,11 +344,11 @@ where
     Ok(match encoding {
         KeyFormat::Pem => input
             .to_public_key_pem(base64ct::LineEnding::LF)
-            .context("invalid pkcs8 pem public key")?
+            .context("invalid pkcs8 public key to pem")?
             .into_bytes(),
         KeyFormat::Der => input
             .to_public_key_der()
-            .context("invalid pkcs8 der public key")?
+            .context("invalid pkcs8 public key to der")?
             .to_vec(),
     })
 }

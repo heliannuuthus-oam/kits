@@ -1,13 +1,13 @@
 import { Select, message } from "antd";
 import { ForwardedRef, forwardRef, useState } from "react";
+import { TextEncoding } from "../codec/codec";
 import {
 	ConvertRef,
+	ConvertSelectProps,
+	PkcsEncodingProps,
 	PkcsFormat,
 	PkcsFormats,
-	PkcsEncodingProps,
 } from "./converter";
-import { ConvertSelectProps } from "./converter";
-import { TextEncoding } from "../codec/codec";
 
 function ConvertSelectInner<T extends PkcsFormat>(
 	{
@@ -27,7 +27,7 @@ function ConvertSelectInner<T extends PkcsFormat>(
 	});
 
 	const selectEncoding = async (val: T) => {
-		const { privateKey, publicKey, encoding } = getInputs();
+		const { privateKey, publicKey, encoding, ...params } = getInputs();
 		const { pkcs: fromPkcs, format: fromFormat } =
 			PkcsFormats[pkcsFormat as PkcsFormat];
 		const { pkcs: toPkcs, format: toFormat } = PkcsFormats[val];
@@ -38,7 +38,8 @@ function ConvertSelectInner<T extends PkcsFormat>(
 				privateKey as string,
 				publicKey as string,
 				fromPkcsEncoding.setEncoding(encoding as TextEncoding),
-				toPkcsEncoding.setEncoding(encoding as TextEncoding)
+				toPkcsEncoding.setEncoding(encoding as TextEncoding),
+				params
 			);
 			setInputs({ privateKey: output[0], publicKey: output[1] });
 			setPkcsFormat(val);

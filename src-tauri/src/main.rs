@@ -35,6 +35,7 @@ fn main() -> Result<()> {
             crypto::aes::generate_iv,
             crypto::rsa::key::generate_rsa,
             crypto::rsa::key::derive_rsa,
+            crypto::rsa::key::parse_rsa,
             crypto::ecc::key::generate_ecc,
             crypto::ecc::key::derive_ecc,
             crypto::ecc::key::parse_ecc,

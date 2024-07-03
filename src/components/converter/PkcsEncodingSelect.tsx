@@ -1,13 +1,13 @@
 import { Select, message } from "antd";
 import { ForwardedRef, forwardRef, useState } from "react";
+import { TextEncoding } from "../codec/codec";
 import {
 	ConvertRef,
+	ConvertSelectProps,
 	PkcsEncodingProps,
 	PkcsFormat,
 	PkcsFormats,
 } from "./converter";
-import { ConvertSelectProps } from "./converter";
-import { TextEncoding } from "../codec/codec";
 
 function ConvertSelectInner(
 	{
@@ -35,7 +35,6 @@ function ConvertSelectInner(
 
 		fromFormat.setEncoding(encoding);
 		toFormat.setEncoding(val);
-		console.log(fromFormat, toFormat);
 
 		try {
 			const output = await converter.convert(
