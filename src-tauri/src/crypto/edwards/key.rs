@@ -3,14 +3,14 @@ use pkcs8::{DecodePrivateKey, EncodePrivateKey, EncodePublicKey};
 use spki::DecodePublicKey;
 use tracing::info;
 
-use crate::utils::{
+use crate::{
     codec::{
         private_bytes_to_pkcs8, private_pkcs8_to_bytes, public_bytes_to_pkcs8,
         public_pkcs8_to_bytes, PkcsDto,
     },
-    common::KeyTuple,
     enums::{EdwardsCurveName, KeyFormat, TextEncoding},
     errors::Result,
+    utils::KeyTuple,
 };
 #[tauri::command]
 pub fn generate_edwards(

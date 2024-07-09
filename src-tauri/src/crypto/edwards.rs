@@ -5,13 +5,11 @@ use tracing::debug;
 use crate::{
     add_encryption_trait_impl,
     crypto::{self, kdf::SALT, EncryptionDto},
-    utils::{
-        enums::{
-            AesEncryptionPadding, EciesEncryptionAlgorithm, EdwardsCurveName,
-            EncryptionMode, KeyFormat, TextEncoding,
-        },
-        errors::Result,
+    enums::{
+        AesEncryptionPadding, EciesEncryptionAlgorithm, EdwardsCurveName,
+        EncryptionMode, KeyFormat, TextEncoding,
     },
+    errors::Result,
 };
 
 pub mod key;

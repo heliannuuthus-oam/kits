@@ -14,13 +14,11 @@ use super::kdf;
 use crate::{
     add_encryption_trait_impl,
     crypto::{self, EncryptionDto},
-    utils::{
-        enums::{
-            AesEncryptionPadding, Digest, EccCurveName,
-            EciesEncryptionAlgorithm, Kdf, KeyFormat, Pkcs, TextEncoding,
-        },
-        errors::{Error, Result},
+    enums::{
+        AesEncryptionPadding, Digest, EccCurveName, EciesEncryptionAlgorithm,
+        Kdf, KeyFormat, Pkcs, TextEncoding,
     },
+    errors::{Error, Result},
 };
 
 pub mod key;
@@ -264,13 +262,11 @@ mod test {
 
     use crate::{
         crypto::ecc::{ecies, key::generate_ecc, EciesDto},
-        utils::{
-            self,
-            enums::{
-                Digest, EccCurveName, EciesEncryptionAlgorithm, Kdf, KeyFormat,
-                Pkcs, TextEncoding,
-            },
+        enums::{
+            Digest, EccCurveName, EciesEncryptionAlgorithm, Kdf, KeyFormat,
+            Pkcs, TextEncoding,
         },
+        utils::{self},
     };
 
     #[test]
@@ -285,7 +281,7 @@ mod test {
         ] {
             info!("start test curve_name: {:?}", curve_name);
             let encoding = TextEncoding::Base64;
-            let salt = utils::common::random_bytes(12).unwrap();
+            let salt = utils::random_bytes(12).unwrap();
             let salt = encoding.encode(&salt).unwrap();
             for pkcs in [Pkcs::Pkcs8, Pkcs::Sec1] {
                 for format in [KeyFormat::Pem, KeyFormat::Der] {

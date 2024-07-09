@@ -8,10 +8,8 @@ use tracing::info;
 use crate::{
     add_encryption_trait_impl,
     crypto::EncryptionDto,
-    utils::{
-        enums::{Digest, KeyFormat, Pkcs, RsaEncryptionPadding, TextEncoding},
-        errors::Result,
-    },
+    enums::{Digest, KeyFormat, Pkcs, RsaEncryptionPadding, TextEncoding},
+    errors::Result,
 };
 
 pub mod key;

@@ -4,16 +4,14 @@ use rsa::{traits::PublicKeyParts, RsaPrivateKey, RsaPublicKey};
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
-use crate::utils::{
+use crate::{
     codec::{
-        pkcs8_pkcs1_converter_inner, private_bytes_to_pkcs1,
-        private_bytes_to_pkcs8, private_pkcs1_to_bytes, private_pkcs8_to_bytes,
-        public_bytes_to_pkcs1, public_bytes_to_pkcs8, public_pkcs1_to_bytes,
+        private_bytes_to_pkcs8, private_pkcs8_to_bytes, public_bytes_to_pkcs8,
         public_pkcs8_to_bytes, PkcsDto,
     },
-    common::KeyTuple,
     enums::{KeyFormat, Pkcs, TextEncoding},
     errors::{Error, Result},
+    utils::KeyTuple,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -250,4 +248,152 @@ pub(crate) fn public_key_to_bytes(
         }
         _ => Err(Error::Unsupported("unsupported rsa secret".to_string())),
     }
+}
+
+pub(crate) fn pkcs8_pkcs1_converter_inner(
+    input: &[u8],
+    from: PkcsDto,
+    to: PkcsDto,
+    is_public: bool,
+) -> Result<Vec<u8>> {
+    match from.pkcs {
+        Pkcs::Pkcs8 => {
+            if is_public {
+                let key = public_bytes_to_pkcs8::<rsa::RsaPublicKey>(
+                    input,
+                    from.format,
+                )?;
+                match to.pkcs {
+                    Pkcs::Pkcs8 => public_pkcs8_to_bytes(key, to.format),
+                    Pkcs::Pkcs1 => public_pkcs1_to_bytes(key, to.format),
+                    _ => Err(Error::Unsupported(
+                        "only supported rsa key".to_string(),
+                    )),
+                }
+            } else {
+                let key = private_bytes_to_pkcs8::<rsa::RsaPrivateKey>(
+                    input,
+                    from.format,
+                )?;
+                match to.pkcs {
+                    Pkcs::Pkcs8 => private_pkcs8_to_bytes(key, to.format),
+                    Pkcs::Pkcs1 => private_pkcs1_to_bytes(key, to.format),
+                    _ => Err(Error::Unsupported(
+                        "only supported rsa key".to_string(),
+                    )),
+                }
+            }
+        }
+        Pkcs::Pkcs1 => {
+            if is_public {
+                let key = public_bytes_to_pkcs1::<rsa::RsaPublicKey>(
+                    input,
+                    from.format,
+                )?;
+                match to.pkcs {
+                    Pkcs::Pkcs8 => public_pkcs8_to_bytes(key, to.format),
+                    Pkcs::Pkcs1 => public_pkcs1_to_bytes(key, to.format),
+                    _ => Err(Error::Unsupported(
+                        "only supported rsa key".to_string(),
+                    )),
+                }
+            } else {
+                let key = private_bytes_to_pkcs1::<rsa::RsaPrivateKey>(
+                    input,
+                    from.format,
+                )?;
+                match to.pkcs {
+                    Pkcs::Pkcs8 => private_pkcs8_to_bytes(key, to.format),
+                    Pkcs::Pkcs1 => private_pkcs1_to_bytes(key, to.format),
+                    _ => Err(Error::Unsupported(
+                        "only supported rsa key".to_string(),
+                    )),
+                }
+            }
+        }
+        _ => Err(Error::Unsupported("only supported rsa key".to_string())),
+    }
+}
+
+pub(crate) fn public_bytes_to_pkcs1<E>(
+    input: &[u8],
+    encoding: KeyFormat,
+) -> Result<E>
+where
+    E: pkcs1::DecodeRsaPublicKey,
+{
+    Ok(match encoding {
+        KeyFormat::Pem => {
+            let key_string = String::from_utf8(input.to_vec())
+                .context("invalid utf-8 key")?;
+            E::from_pkcs1_pem(&key_string)
+                .context("invalid pkcs1 pem public key")?
+        }
+        KeyFormat::Der => {
+            E::from_pkcs1_der(input).context("invalid pkcs1 der public key")?
+        }
+    })
+}
+
+pub(crate) fn private_bytes_to_pkcs1<E>(
+    input: &[u8],
+    format: KeyFormat,
+) -> Result<E>
+where
+    E: pkcs1::DecodeRsaPrivateKey,
+{
+    Ok(match format {
+        KeyFormat::Pem => {
+            let key_string = String::from_utf8(input.to_vec())
+                .context("invalid utf-8 key")?;
+            <E as pkcs1::DecodeRsaPrivateKey>::from_pkcs1_pem(&key_string)
+                .context("invalid pkcs1 pem private key")?
+        }
+        KeyFormat::Der => {
+            <E as pkcs1::DecodeRsaPrivateKey>::from_pkcs1_der(input)
+                .context("invalid pkcs1 der private key")?
+        }
+    })
+}
+
+pub(crate) fn private_pkcs1_to_bytes<E>(
+    input: E,
+    format: KeyFormat,
+) -> Result<Vec<u8>>
+where
+    E: pkcs1::EncodeRsaPrivateKey,
+{
+    Ok(match format {
+        KeyFormat::Pem => input
+            .to_pkcs1_pem(base64ct::LineEnding::LF)
+            .context("invalid pkcs1 pem key")?
+            .as_bytes()
+            .to_vec(),
+        KeyFormat::Der => input
+            .to_pkcs1_der()
+            .context("invalid pkcs1 der key")?
+            .as_bytes()
+            .to_vec(),
+    })
+}
+
+pub(crate) fn public_pkcs1_to_bytes<E>(
+    input: E,
+    encoding: KeyFormat,
+) -> Result<Vec<u8>>
+where
+    E: pkcs1::EncodeRsaPublicKey,
+{
+    Ok(match encoding {
+        KeyFormat::Pem => input
+            .to_pkcs1_pem(base64ct::LineEnding::LF)
+            .context("invalid pkcs1 pem public key")?
+            .as_bytes()
+            .to_vec(),
+        KeyFormat::Der => input
+            .to_pkcs1_der()
+            .context("invalid pkcs1 der key")?
+            .as_bytes()
+            .to_vec(),
+    })
 }
