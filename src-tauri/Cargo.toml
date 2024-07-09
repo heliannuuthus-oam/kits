@@ -1,7 +1,7 @@
 [package]
 name = "kits"
-version = "0.1.1"
-description = "A Tauri App"
+version = "0.2.0"
+description = "A Cryptographic Tool Kits"
 authors = ["heliannuuthus"]
 edition = "2021"
 
@@ -116,6 +116,9 @@ ed25519-dalek = { version = "2.1.1", features = [
   "digest",
 ] }
 der-parser = "9.0.0"
+
+# json web token 
+jsonwebtoken = "9.3.0"
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!

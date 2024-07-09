@@ -1,4 +1,4 @@
-use crate::utils::{enums::TextEncoding, errors::Result};
+use crate::{enums::TextEncoding, errors::Result};
 
 pub mod aes;
 pub mod ecc;

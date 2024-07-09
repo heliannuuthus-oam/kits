@@ -12,7 +12,7 @@ use hkdf::hmac::Hmac;
 use serde::{Deserialize, Serialize};
 
 use super::EncryptionDto;
-use crate::utils::{
+use crate::{
     enums::{Digest, Kdf, TextEncoding},
     errors::{Error, Result},
 };
@@ -188,7 +188,7 @@ mod tests {
     use tracing::info;
     use tracing_test::traced_test;
 
-    use crate::utils::common::random_bytes;
+    use crate::utils::random_bytes;
 
     #[test]
     #[traced_test]

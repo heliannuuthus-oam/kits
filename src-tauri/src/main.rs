@@ -2,10 +2,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use anyhow::Context;
+use errors::Result;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
-use utils::errors::Result;
 
+pub mod codec;
 pub mod crypto;
+pub mod enums;
+pub mod errors;
+pub mod jwt;
 pub mod utils;
 
 fn main() -> Result<()> {
@@ -53,14 +57,18 @@ fn main() -> Result<()> {
             crypto::edwards::key::transfer_edwards_key,
             // kdf
             crypto::kdf::kdf,
+            // jwt
+            jwt::jws::generate_jws,
+            jwt::jwe::generate_jwe,
+            jwt::jwk::generate_jwk,
             // common
-            utils::codec::convert_encoding,
-            utils::common::digests,
-            utils::common::elliptic_curve,
-            utils::common::edwards,
-            utils::common::kdfs,
-            utils::common::ecies_enc_alg,
-            utils::common::rsa_encryption_padding,
+            codec::convert_encoding,
+            utils::digests,
+            utils::elliptic_curve,
+            utils::edwards,
+            utils::kdfs,
+            utils::ecies_enc_alg,
+            utils::rsa_encryption_padding,
         ])
         .run(tauri::generate_context!())
         .context("error while running tauri application")?;
