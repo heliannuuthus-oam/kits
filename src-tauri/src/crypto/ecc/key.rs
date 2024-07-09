@@ -218,7 +218,27 @@ pub fn parse_ecc(input: String) -> Result<EccKeyInfo> {
     } else {
         KeyFormat::Der
     };
-    let (pkcs, curve_name) = pem_decodor((&input, format))?;
+    let (pkcs, curve_name) = match format {
+        KeyFormat::Pem => {
+            pem_decodor((TextEncoding::Utf8.encode(&key)?.as_ref(), format))?
+        }
+        KeyFormat::Der => {
+            if let Ok(curve_name) = parse_curve_name(&key, Pkcs::Pkcs8, format)
+            {
+                (Pkcs::Pkcs8, curve_name)
+            } else if let Ok(key_size) =
+                parse_curve_name(&key, Pkcs::Pkcs1, format)
+            {
+                (Pkcs::Sec1, key_size)
+            } else if let Ok(key_size) =
+                parse_curve_name(&key, Pkcs::Spki, format)
+            {
+                (Pkcs::Spki, key_size)
+            } else {
+                return Err(Error::Unsupported("pkcs".to_string()));
+            }
+        }
+    };
     Ok(EccKeyInfo {
         curve_name,
         encoding,

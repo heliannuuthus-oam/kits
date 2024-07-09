@@ -145,7 +145,16 @@ impl EciesEncryptionAlgorithm {
 }
 
 #[derive(
-    Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    EnumIter,
 )]
 pub enum RsaEncryptionPadding {
     #[serde(rename = "pkcs1-v1_5")]
