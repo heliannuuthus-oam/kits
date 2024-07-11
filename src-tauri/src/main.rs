@@ -61,8 +61,10 @@ fn main() -> Result<()> {
             jwt::jws::generate_jws,
             jwt::jwe::generate_jwe,
             jwt::jwk::generate_jwk,
+            jwt::jwk::jwk_algorithm,
             // common
             codec::convert_encoding,
+            utils::rsa_key_size,
             utils::digests,
             utils::elliptic_curve,
             utils::edwards,

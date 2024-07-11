@@ -36,7 +36,7 @@ pub struct EccKeyInfo {
 }
 
 #[tauri::command]
-pub fn generate_ecc(
+pub async fn generate_ecc(
     curve_name: EccCurveName,
     pkcs: Pkcs,
     format: KeyFormat,
@@ -49,18 +49,18 @@ pub fn generate_ecc(
     );
     let (private_key_bytes, public_key_bytes) = (match curve_name {
         EccCurveName::NistP256 => {
-            generate_ecc_key::<p256::NistP256>(pkcs, format)
+            generate_ecc_key::<p256::NistP256>(pkcs, format).await
         }
         EccCurveName::NistP384 => {
-            generate_ecc_key::<p384::NistP384>(pkcs, format)
+            generate_ecc_key::<p384::NistP384>(pkcs, format).await
         }
         EccCurveName::NistP521 => {
-            generate_ecc_key::<p521::NistP521>(pkcs, format)
+            generate_ecc_key::<p521::NistP521>(pkcs, format).await
         }
         EccCurveName::Secp256k1 => {
-            generate_ecc_key::<k256::Secp256k1>(pkcs, format)
+            generate_ecc_key::<k256::Secp256k1>(pkcs, format).await
         }
-        EccCurveName::SM2 => generate_ecc_key::<sm2::Sm2>(pkcs, format),
+        EccCurveName::SM2 => generate_ecc_key::<sm2::Sm2>(pkcs, format).await,
     })?;
 
     Ok(KeyTuple::new(
@@ -70,7 +70,7 @@ pub fn generate_ecc(
 }
 
 #[tauri::command]
-pub fn derive_ecc(
+pub async fn derive_ecc(
     curve_name: EccCurveName,
     input: String,
     pkcs: Pkcs,
@@ -156,7 +156,7 @@ pub async fn transfer_ecc_key(
     Ok(tuple)
 }
 
-fn generate_ecc_key<C>(
+pub(crate) async fn generate_ecc_key<C>(
     pkcs: Pkcs,
     format: KeyFormat,
 ) -> Result<(Vec<u8>, Vec<u8>)>

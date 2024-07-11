@@ -1,6 +1,6 @@
 use digest::{Digest as Di, DynDigest};
 use serde::{Deserialize, Serialize};
-use strum_macros::EnumIter;
+use strum_macros::{EnumIter, EnumString, FromRepr};
 
 use super::{
     codec::{
@@ -21,8 +21,30 @@ use super::{
     PartialOrd,
     Ord,
     EnumIter,
+    FromRepr,
+)]
+#[repr(usize)]
+pub enum RsaKeySize {
+    Rsa2048 = 2048,
+    Rsa3072 = 3072,
+    Rsa4096 = 4096,
+}
+
+#[derive(
+    Serialize,
+    Deserialize,
+    Clone,
+    Copy,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    EnumIter,
+    EnumString,
 )]
 #[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
 pub enum EccCurveName {
     NistP256,
     NistP384,
@@ -226,4 +248,36 @@ pub enum Kdf {
     Concatenation,
     PbKdf2,
     Scrypt,
+}
+
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    EnumIter,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+)]
+#[serde(rename_all = "lowercase")]
+pub enum JwkAlgorithm {
+    HS256,
+    HS384,
+    HS512,
+
+    ES256,
+    ES384,
+
+    RS256,
+    RS384,
+    RS512,
+
+    PS256,
+    PS384,
+    PS512,
+
+    EdDSA,
 }

@@ -9,6 +9,7 @@ use super::{
     },
     errors::Result,
 };
+use crate::enums::RsaKeySize;
 #[derive(Serialize, Deserialize)]
 pub struct KeyTuple(pub Option<String>, pub Option<String>);
 
@@ -63,6 +64,11 @@ pub fn digests() -> Vec<Digest> {
 #[tauri::command]
 pub fn ecies_enc_alg() -> Vec<EciesEncryptionAlgorithm> {
     EciesEncryptionAlgorithm::iter().collect::<Vec<EciesEncryptionAlgorithm>>()
+}
+
+#[tauri::command]
+pub fn rsa_key_size() -> Vec<RsaKeySize> {
+    RsaKeySize::iter().collect::<Vec<RsaKeySize>>()
 }
 
 #[tauri::command]

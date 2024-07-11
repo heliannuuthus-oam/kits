@@ -83,7 +83,7 @@ impl Debug for EciesDto {
 }
 
 #[tauri::command]
-pub fn ecies(data: EciesDto) -> Result<String> {
+pub async fn ecies(data: EciesDto) -> Result<String> {
     info!("ecies :{:?} ", data);
     let output_encoding = data.output_encoding;
     let cipher_bytes = (match data.curve_name {
@@ -269,9 +269,9 @@ mod test {
         utils::{self},
     };
 
-    #[test]
+    #[tokio::test]
     #[traced_test]
-    fn test_generate_and_encryption() {
+    async fn test_generate_and_encryption() {
         for curve_name in [
             EccCurveName::NistP256,
             EccCurveName::NistP384,
@@ -290,6 +290,7 @@ mod test {
                             let key = generate_ecc(
                                 curve_name, pkcs, format, encoding,
                             )
+                            .await
                             .unwrap();
                             let plaintext = "plaintext";
                             let ciphertext = ecies(EciesDto {
@@ -311,6 +312,7 @@ mod test {
                                     EciesEncryptionAlgorithm::AesGcm,
                                 for_encryption: true,
                             })
+                            .await
                             .unwrap();
 
                             assert_eq!(
@@ -333,6 +335,7 @@ mod test {
                                         EciesEncryptionAlgorithm::AesGcm,
                                     for_encryption: false,
                                 })
+                                .await
                                 .unwrap(),
                                 plaintext
                             );
