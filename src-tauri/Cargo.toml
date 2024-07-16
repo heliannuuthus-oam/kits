@@ -123,7 +123,9 @@ jose-jwa = "0.1.2"
 jose-jwe = "0.0.0"
 jose-jws = "0.1.2"
 jose-jwt = "0.0.0"
-jose-jwk = "0.1.2"
+jose-jwk = { git = "https://github.com/heliannuuthus/JOSE.git" , branch = "feat-p256k"}
+enum-map = "2.7.3"
+num-bigint = "0.4.6"
 
 # json web token 
 

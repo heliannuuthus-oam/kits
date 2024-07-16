@@ -25,8 +25,11 @@ use super::{
 )]
 #[repr(usize)]
 pub enum RsaKeySize {
+    #[serde(rename = "2048")]
     Rsa2048 = 2048,
+    #[serde(rename = "3072")]
     Rsa3072 = 3072,
+    #[serde(rename = "4096")]
     Rsa4096 = 4096,
 }
 
@@ -262,22 +265,74 @@ pub enum Kdf {
     PartialOrd,
     Ord,
 )]
-#[serde(rename_all = "lowercase")]
 pub enum JwkAlgorithm {
+    #[serde(rename = "dir")]
+    Dir,
+    A128KW,
+    A192KW,
+    A256KW,
+    A128GCM,
+    A192GCM,
+    A256GCM,
+    A128GCMKW,
+    A192GCMKW,
+    A256GCMKW,
+    #[serde(rename = "A128CBC-HS256")]
+    A128cbcHs256,
+    #[serde(rename = "A192CBC-HS384")]
+    A192cbcHs384,
+    #[serde(rename = "A256CBC-HS512")]
+    A256cbcHs512,
     HS256,
     HS384,
     HS512,
 
     ES256,
     ES384,
+    ES521,
+    ES256K,
 
     RS256,
     RS384,
     RS512,
-
     PS256,
     PS384,
     PS512,
+    #[serde(rename = "RSA1_5")]
+    Rsa1_5,
+    #[serde(rename = "RSA-OAEP")]
+    RsaOaep,
+    #[serde(rename = "RSA-OAEP-256")]
+    RsaOaep256,
+    #[serde(rename = "RSA-OAEP-384")]
+    RsaOaep384,
+    #[serde(rename = "RSA-OAEP-512")]
+    RsaOaep521,
 
     EdDSA,
+    #[serde(rename = "ECDH-ES")]
+    EcdhEs,
+    #[serde(rename = "ECDH-ES+A128KW")]
+    EcdhEsA128kw,
+    #[serde(rename = "ECDH-ES+A192KW")]
+    EcdhEsA192kw,
+    #[serde(rename = "ECDH-ES+A256KW")]
+    EcdhEsA256kw,
+}
+
+#[derive(
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    EnumIter,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+)]
+pub enum JwkeyUsage {
+    Encryption,
+    Signature,
 }

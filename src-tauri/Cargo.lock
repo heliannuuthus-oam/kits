@@ -1037,6 +1037,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "enum-map"
+version = "2.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6866f3bfdf8207509a033af1a75a7b08abda06bbaaeae6669323fd5a097df2e9"
+dependencies = [
+ "enum-map-derive",
+]
+
+[[package]]
+name = "enum-map-derive"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f282cfdfe92516eb26c2af8589c274c7c17681f5ecc03c18255fe741c6aa64eb"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.66",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1907,10 +1927,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "jose-b64"
+version = "0.1.2"
+source = "git+https://github.com/heliannuuthus/JOSE.git?branch=feat-p256k#f331313d2482a5128c80cd47a4193976f1dea762"
+dependencies = [
+ "base64ct",
+ "serde",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
 name = "jose-jwa"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ab78e053fe886a351d67cf0d194c000f9d0dcb92906eb34d853d7e758a4b3a7"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "jose-jwa"
+version = "0.1.2"
+source = "git+https://github.com/heliannuuthus/JOSE.git?branch=feat-p256k#f331313d2482a5128c80cd47a4193976f1dea762"
 dependencies = [
  "serde",
 ]
@@ -1927,10 +1966,23 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "280fa263807fe0782ecb6f2baadc28dffc04e00558a58e33bfdb801d11fd58e7"
 dependencies = [
- "jose-b64",
- "jose-jwa",
+ "jose-b64 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jose-jwa 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde",
+ "zeroize",
+]
+
+[[package]]
+name = "jose-jwk"
+version = "0.1.2"
+source = "git+https://github.com/heliannuuthus/JOSE.git?branch=feat-p256k#f331313d2482a5128c80cd47a4193976f1dea762"
+dependencies = [
+ "jose-b64 0.1.2 (git+https://github.com/heliannuuthus/JOSE.git?branch=feat-p256k)",
+ "jose-jwa 0.1.2 (git+https://github.com/heliannuuthus/JOSE.git?branch=feat-p256k)",
+ "k256",
  "p256",
  "p384",
+ "p521",
  "rsa",
  "serde",
  "zeroize",
@@ -1942,9 +1994,9 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b5d49df4f553a811aa2e378155ade5c7aac0f410086d3010faca127417c1c26"
 dependencies = [
- "jose-b64",
- "jose-jwa",
- "jose-jwk",
+ "jose-b64 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jose-jwa 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jose-jwk 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand_core 0.6.4",
  "serde",
  "serde_json",
@@ -2027,15 +2079,17 @@ dependencies = [
  "digest",
  "ed25519-dalek",
  "elliptic-curve",
+ "enum-map",
  "hkdf",
  "inout",
- "jose-b64",
- "jose-jwa",
+ "jose-b64 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jose-jwa 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "jose-jwe",
- "jose-jwk",
+ "jose-jwk 0.1.2 (git+https://github.com/heliannuuthus/JOSE.git?branch=feat-p256k)",
  "jose-jws",
  "jose-jwt",
  "k256",
+ "num-bigint",
  "p256",
  "p384",
  "p521",
@@ -2325,6 +2379,16 @@ checksum = "77a8165726e8236064dbb45459242600304b42a5ea24ee2948e18e023bf7ba84"
 dependencies = [
  "overload",
  "winapi",
+]
+
+[[package]]
+name = "num-bigint"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5e44f723f1133c9deac646763579fdb3ac745e418f2a7af9cd0c431da1f20b9"
+dependencies = [
+ "num-integer",
+ "num-traits",
 ]
 
 [[package]]

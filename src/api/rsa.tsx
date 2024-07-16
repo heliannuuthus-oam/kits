@@ -4,4 +4,8 @@ const fetchRsaEncryptionPadding = async (): Promise<string[]> => {
 	return await invoke<string[]>("rsa_encryption_padding");
 };
 
-export { fetchRsaEncryptionPadding };
+const fetchRsaKeySize = async (): Promise<string[]> => {
+	return await invoke<string[]>("rsa_key_size");
+};
+
+export { fetchRsaEncryptionPadding, fetchRsaKeySize };

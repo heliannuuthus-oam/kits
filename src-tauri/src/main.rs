@@ -61,9 +61,9 @@ fn main() -> Result<()> {
             jwt::jws::generate_jws,
             jwt::jwe::generate_jwe,
             jwt::jwk::generate_jwk,
-            jwt::jwk::jwk_algorithm,
             // common
             codec::convert_encoding,
+            utils::random_id,
             utils::rsa_key_size,
             utils::digests,
             utils::elliptic_curve,
@@ -71,6 +71,9 @@ fn main() -> Result<()> {
             utils::kdfs,
             utils::ecies_enc_alg,
             utils::rsa_encryption_padding,
+            utils::jwkey_type,
+            utils::jwkey_algorithm,
+            utils::jwkey_usage,
         ])
         .run(tauri::generate_context!())
         .context("error while running tauri application")?;
