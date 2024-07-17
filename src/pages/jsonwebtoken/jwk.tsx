@@ -14,11 +14,11 @@ import { useForm, useWatch } from "antd/es/form/Form";
 import { ReactNode, useEffect, useState } from "react";
 import {
 	fetchJwkeyAlgs,
+	fetchJwkeyOps,
 	fetchJwkeyTypes,
 	fetchJwkeyUsages,
 	randomId,
 } from "../../api/constants";
-import { fetchCurveNames } from "../../api/ecc";
 import { fetchRsaKeySize } from "../../api/rsa";
 
 type JwkeyForm = {
@@ -85,13 +85,11 @@ const JwkeySetting = () => {
 	const [algs, setAlgs] = useState<SelectProps["options"]>();
 	const [usages, setUsages] = useState<SelectProps["options"]>();
 	const [bits, setBits] = useState<string[]>();
-	const [curves, setCurves] = useState<string[]>();
 
 	const kty = useWatch("keyType", form) ?? "rsa";
 
 	useEffect(() => {
 		fetchRsaKeySize().then(setBits);
-		fetchCurveNames().then(setCurves);
 		fetchJwkeyAlgs(kty).then((algs) => {
 			setAlgs(
 				algs.map((alg) => {
@@ -141,39 +139,6 @@ const JwkeySetting = () => {
 						</Radio.Group>
 					),
 				};
-			case "ecdsa": {
-				return {
-					label: "Curve:",
-					name: "curve",
-					tips: "",
-					component: (
-						<Radio.Group
-							style={{
-								display: "flex",
-								justifyContent: "space-between",
-								flexWrap: "wrap",
-								gap: "3px",
-							}}
-						>
-							{curves?.map((curve) => {
-								return (
-									<Radio.Button
-										style={{
-											flex: "1 1 calc(33% - 10px)",
-											textAlign: "center",
-											borderRadius: "0",
-											borderInlineStartWidth: "1px",
-										}}
-										key={curve}
-										value={curve}
-										children={curve}
-									/>
-								);
-							})}
-						</Radio.Group>
-					),
-				};
-			}
 			default:
 				return {
 					label: "",
@@ -231,6 +196,57 @@ const JwkeySetting = () => {
 	);
 };
 
+const JwkeyOperation = ({
+	value,
+	onChange,
+}: {
+	value?: string | string[];
+	onChange?: (value: string[]) => void;
+}) => {
+	const form = Form.useFormInstance<JwkeyForm>();
+	const [jwkeyOps, setJwkeyOps] = useState<string[]>();
+
+	useEffect(() => {
+		fetchJwkeyOps().then(setJwkeyOps);
+	}, []);
+
+	return (
+		<List
+			header={"Key Operations"}
+			size={size}
+			dataSource={jwkeyOps}
+			renderItem={(op) => (
+				<List.Item
+					style={{ cursor: "pointer" }}
+					onClick={(_) => {
+						let ops: string[] = [op];
+						if (value instanceof Array) {
+							let index = value?.indexOf(op);
+							if (index > -1) {
+								value.splice(index, 1);
+							} else {
+								value.push(op);
+							}
+							ops = [...new Set([...value])];
+						}
+						onChange?.(ops);
+					}}
+					extra={
+						<Radio
+							checked={
+								(form.getFieldValue("operations") ?? []).indexOf(op) !== -1
+							}
+						/>
+					}
+					children={op}
+				/>
+			)}
+		/>
+	);
+};
+
+const minHeight = 550;
+
 const JWK = () => {
 	let [form] = useForm<JwkeyForm>();
 
@@ -238,22 +254,24 @@ const JWK = () => {
 		<Form form={form} initialValues={{ keyType: "rsa" } as JwkeyForm}>
 			<Row gutter={16}>
 				<Col span={8}>
-					<Card bordered={false} style={{ height: 450 }}>
-						<Form.Item name="keyType">
+					<Card bordered={false} style={{ minHeight }}>
+						<Form.Item noStyle name="keyType">
 							<JwkeyType />
 						</Form.Item>
 					</Card>
 				</Col>
 				<Col span={8}>
-					<Card bordered={false} style={{ height: 450 }}>
+					<Card bordered={false} style={{ minHeight }}>
 						<Form.Item noStyle key="jwkey setting">
 							<JwkeySetting />
 						</Form.Item>
 					</Card>
 				</Col>
 				<Col span={8}>
-					<Card bordered={false} style={{ height: 450 }}>
-						Card content
+					<Card bordered={false} style={{ minHeight }}>
+						<Form.Item name="operations" noStyle key="jwkey opration">
+							<JwkeyOperation />
+						</Form.Item>
 					</Card>
 				</Col>
 			</Row>

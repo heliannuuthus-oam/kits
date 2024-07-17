@@ -10,8 +10,8 @@ use super::{
     errors::Result,
 };
 use crate::{
-    enums::{JwkAlgorithm, JwkeyUsage, RsaKeySize},
-    jwt::JwkeyType,
+    enums::RsaKeySize,
+    jwt::{JwkeyAlgorithm, JwkeyOperation, JwkeyType, JwkeyUsage},
 };
 #[derive(Serialize, Deserialize)]
 pub struct KeyTuple(pub Option<String>, pub Option<String>);
@@ -88,46 +88,46 @@ pub fn rsa_encryption_padding() -> Vec<RsaEncryptionPadding> {
 }
 
 #[tauri::command]
-pub(crate) fn jwkey_algorithm(kty: JwkeyType) -> Vec<JwkAlgorithm> {
+pub(crate) fn jwkey_algorithm(kty: JwkeyType) -> Vec<JwkeyAlgorithm> {
     match kty {
         JwkeyType::RSA => vec![
-            JwkAlgorithm::RS256,
-            JwkAlgorithm::RS384,
-            JwkAlgorithm::RS512,
-            JwkAlgorithm::PS256,
-            JwkAlgorithm::PS384,
-            JwkAlgorithm::PS512,
+            JwkeyAlgorithm::RS256,
+            JwkeyAlgorithm::RS384,
+            JwkeyAlgorithm::RS512,
+            JwkeyAlgorithm::PS256,
+            JwkeyAlgorithm::PS384,
+            JwkeyAlgorithm::PS512,
         ],
         JwkeyType::EcDSA => vec![
-            JwkAlgorithm::ES256,
-            JwkAlgorithm::ES384,
-            JwkAlgorithm::ES521,
-            JwkAlgorithm::ES256K,
+            JwkeyAlgorithm::ES256,
+            JwkeyAlgorithm::ES384,
+            JwkeyAlgorithm::ES521,
+            JwkeyAlgorithm::ES256K,
         ],
-        JwkeyType::Ed25519 => vec![JwkAlgorithm::EdDSA],
+        JwkeyType::Ed25519 => vec![JwkeyAlgorithm::EdDSA],
         JwkeyType::X25519 => vec![
-            JwkAlgorithm::EcdhEs,
-            JwkAlgorithm::EcdhEsA128kw,
-            JwkAlgorithm::EcdhEsA192kw,
-            JwkAlgorithm::EcdhEsA256kw,
+            JwkeyAlgorithm::EcdhEs,
+            JwkeyAlgorithm::EcdhEsA128kw,
+            JwkeyAlgorithm::EcdhEsA192kw,
+            JwkeyAlgorithm::EcdhEsA256kw,
         ],
         JwkeyType::Symmetric => vec![
-            JwkAlgorithm::Dir,
-            JwkAlgorithm::HS256,
-            JwkAlgorithm::A128GCM,
-            JwkAlgorithm::A128GCMKW,
-            JwkAlgorithm::A128KW,
-            JwkAlgorithm::A128cbcHs256,
-            JwkAlgorithm::HS384,
-            JwkAlgorithm::A192GCM,
-            JwkAlgorithm::A192GCMKW,
-            JwkAlgorithm::A192KW,
-            JwkAlgorithm::A192cbcHs384,
-            JwkAlgorithm::HS512,
-            JwkAlgorithm::A256GCM,
-            JwkAlgorithm::A256GCMKW,
-            JwkAlgorithm::A256KW,
-            JwkAlgorithm::A256cbcHs512,
+            JwkeyAlgorithm::Dir,
+            JwkeyAlgorithm::HS256,
+            JwkeyAlgorithm::A128GCM,
+            JwkeyAlgorithm::A128GCMKW,
+            JwkeyAlgorithm::A128KW,
+            JwkeyAlgorithm::A128cbcHs256,
+            JwkeyAlgorithm::HS384,
+            JwkeyAlgorithm::A192GCM,
+            JwkeyAlgorithm::A192GCMKW,
+            JwkeyAlgorithm::A192KW,
+            JwkeyAlgorithm::A192cbcHs384,
+            JwkeyAlgorithm::HS512,
+            JwkeyAlgorithm::A256GCM,
+            JwkeyAlgorithm::A256GCMKW,
+            JwkeyAlgorithm::A256KW,
+            JwkeyAlgorithm::A256cbcHs512,
         ],
     }
 }
@@ -148,4 +148,9 @@ pub(crate) fn jwkey_usage(kty: JwkeyType) -> Vec<JwkeyUsage> {
 #[tauri::command]
 pub async fn jwkey_type() -> Vec<JwkeyType> {
     JwkeyType::iter().collect::<Vec<JwkeyType>>()
+}
+
+#[tauri::command]
+pub async fn jwkey_operation() -> Vec<JwkeyOperation> {
+    JwkeyOperation::iter().collect::<Vec<JwkeyOperation>>()
 }

@@ -74,6 +74,7 @@ fn main() -> Result<()> {
             utils::jwkey_type,
             utils::jwkey_algorithm,
             utils::jwkey_usage,
+            utils::jwkey_operation,
         ])
         .run(tauri::generate_context!())
         .context("error while running tauri application")?;
