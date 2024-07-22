@@ -1,6 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
+#![feature(let_chains)]
 use anyhow::Context;
 use errors::Result;
 use tracing_subscriber::fmt::writer::MakeWriterExt;

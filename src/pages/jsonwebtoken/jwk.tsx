@@ -1,4 +1,7 @@
+import { invoke } from "@tauri-apps/api";
+import { writeText } from "@tauri-apps/api/clipboard";
 import {
+	Button,
 	Card,
 	Col,
 	Form,
@@ -8,9 +11,12 @@ import {
 	Row,
 	Select,
 	SelectProps,
+	Space,
+	Typography,
 } from "antd";
 import { createStyles } from "antd-style";
 import { useForm, useWatch } from "antd/es/form/Form";
+import useMessage from "antd/es/message/useMessage";
 import { ReactNode, useEffect, useState } from "react";
 import {
 	fetchJwkeyAlgs,
@@ -23,9 +29,9 @@ import { fetchRsaKeySize } from "../../api/rsa";
 
 type JwkeyForm = {
 	keyType: string;
-	algorithm: string;
-	keyId: string;
-	usage: string;
+	algorithm: string | null;
+	keyId: string | null;
+	usage: string | null;
 	params: Record<string, unknown> | null;
 	operations: string[] | null;
 };
@@ -54,7 +60,7 @@ const JwkeyType = ({ onChange }: { onChange?: (value: string) => void }) => {
 				<List.Item
 					style={{ cursor: "pointer" }}
 					onClick={(_) => {
-						form.setFieldsValue({ algorithm: "", usage: "" });
+						form.setFieldsValue({ algorithm: null, usage: null });
 						onChange?.(kt);
 					}}
 					extra={<Radio checked={form.getFieldValue("keyType") === kt} />}
@@ -89,7 +95,14 @@ const JwkeySetting = () => {
 	const kty = useWatch("keyType", form) ?? "rsa";
 
 	useEffect(() => {
-		fetchRsaKeySize().then(setBits);
+		fetchRsaKeySize().then((bits) => {
+			setBits(bits);
+			let params = form.getFieldValue("params");
+			form.setFieldsValue({
+				...params,
+				bits: bits[0],
+			});
+		});
 		fetchJwkeyAlgs(kty).then((algs) => {
 			setAlgs(
 				algs.map((alg) => {
@@ -245,33 +258,106 @@ const JwkeyOperation = ({
 	);
 };
 
-const minHeight = 550;
+const minHeight = 450;
 
 const JWK = () => {
-	let [form] = useForm<JwkeyForm>();
+	const [form] = useForm<JwkeyForm>();
+
+	const [content, setContent] = useState<string>("");
+	const [msgApi, msgContent] = useMessage({
+		duration: 4,
+		maxCount: 1,
+	});
+
+	const generateJwkey = async () => {
+		try {
+			let params = form.getFieldValue("params");
+			const data = { ...form.getFieldsValue(true), ...params };
+			console.log(data);
+			const c = await invoke<string>("generate_jwk", {
+				data,
+			});
+			setContent(c);
+		} catch (e) {
+			console.log(e);
+		}
+	};
+	const copiedContent = async () => {
+		writeText(content);
+		msgApi.success("copied");
+	};
 
 	return (
 		<Form form={form} initialValues={{ keyType: "rsa" } as JwkeyForm}>
-			<Row gutter={16}>
-				<Col span={8}>
+			{msgContent}
+			<Row style={{ marginBottom: 32 }}>
+				<Col span={7}>
 					<Card bordered={false} style={{ minHeight }}>
 						<Form.Item noStyle name="keyType">
 							<JwkeyType />
 						</Form.Item>
 					</Card>
 				</Col>
-				<Col span={8}>
+				<Col offset={1} span={7}>
 					<Card bordered={false} style={{ minHeight }}>
 						<Form.Item noStyle key="jwkey setting">
 							<JwkeySetting />
 						</Form.Item>
 					</Card>
 				</Col>
-				<Col span={8}>
+				<Col span={7} offset={1}>
 					<Card bordered={false} style={{ minHeight }}>
 						<Form.Item name="operations" noStyle key="jwkey opration">
 							<JwkeyOperation />
 						</Form.Item>
+					</Card>
+				</Col>
+			</Row>
+			<Row>
+				<Col span={23}>
+					<Card
+						title={
+							<div
+								style={{
+									margin: "12px 0",
+									fontWeight: 200,
+									display: "flex",
+									justifyItems: "center",
+									flexFlow: "column",
+								}}
+							>
+								<Typography.Title
+									level={5}
+									style={{ margin: 0 }}
+									children={"JSON Web Key"}
+								/>
+								<Typography.Text
+									children={"The given key encoded in to JWK format."}
+								/>
+							</div>
+						}
+						extra={
+							<Space.Compact>
+								<Button children="generate" onClick={generateJwkey} />
+								{content == "" ? (
+									<></>
+								) : (
+									<Button children="copy" onClick={copiedContent} />
+								)}
+							</Space.Compact>
+						}
+						styles={{
+							header: { width: "100%" },
+							body: {
+								whiteSpace: "pre-wrap",
+								wordBreak: "break-word",
+								color: "#cccccc",
+								backgroundColor: "#2c3441",
+								display: content == "" ? "none" : "block",
+							},
+						}}
+					>
+						{content}
 					</Card>
 				</Col>
 			</Row>

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 use strum_macros::EnumIter;
 
@@ -118,8 +120,21 @@ pub enum JwkeyAlgorithm {
     Ord,
 )]
 pub enum JwkeyUsage {
+    #[serde(rename = "Encryption")]
     Encryption,
+    #[serde(rename = "Signature")]
     Signature,
+}
+
+impl Display for JwkeyUsage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            JwkeyUsage::Encryption => "enc",
+            JwkeyUsage::Signature => "sig",
+        };
+
+        write!(f, "{}", str)
+    }
 }
 
 #[derive(

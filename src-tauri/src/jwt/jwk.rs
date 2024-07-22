@@ -8,15 +8,15 @@ use super::{JwkeyAlgorithm, JwkeyOperation, JwkeyType, JwkeyUsage};
 use crate::{enums::RsaKeySize, errors::Result, utils::random_bytes};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct JwkGenerate {
+#[serde(rename_all = "camelCase")]
+pub struct JwkGenerate {
     pub key_id: Option<String>,
     pub key_type: JwkeyType,
     pub algorithm: Option<JwkeyAlgorithm>,
     pub usage: Option<JwkeyUsage>,
-    pub operation: Vec<JwkeyOperation>,
-    pub key_size: Option<RsaKeySize>,
+    pub operations: Option<Vec<JwkeyOperation>>,
+    pub bits: Option<RsaKeySize>,
 }
-
 #[tauri::command]
 pub(crate) async fn generate_jwk(data: JwkGenerate) -> Result<String> {
     let mut value = generate_jwk_inner(
@@ -29,10 +29,17 @@ pub(crate) async fn generate_jwk(data: JwkGenerate) -> Result<String> {
     if let Some(alg) = data.algorithm {
         value["alg"] = json!(alg);
     }
-    if !data.operation.is_empty() {
-        value["key_ops"] = json!(&data.operation);
+    if let Some(ops) = data.operations
+        && !ops.is_empty()
+    {
+        value["key_ops"] = json!(&ops);
     }
-    Ok(value.to_string())
+    if let Some(usage) = data.usage {
+        value["use"] = serde_json::Value::String(usage.to_string())
+    }
+
+    Ok(serde_json::to_string_pretty(&value)
+        .context("value to string failed")?)
 }
 
 pub(crate) async fn generate_jwk_inner(
@@ -152,13 +159,13 @@ mod test {
         let ops = JwkeyOperation::iter().collect::<Vec<JwkeyOperation>>();
         for kty in JwkeyType::iter() {
             for alg in JwkeyAlgorithm::iter() {
-                let mut key_size = None;
+                let mut bits = None;
                 if alg.eq(&JwkeyAlgorithm::RS256) {
-                    key_size = Some(RsaKeySize::Rsa2048);
+                    bits = Some(RsaKeySize::Rsa2048);
                 } else if alg.eq(&JwkeyAlgorithm::RS384) {
-                    key_size = Some(RsaKeySize::Rsa3072);
+                    bits = Some(RsaKeySize::Rsa3072);
                 } else if alg.eq(&JwkeyAlgorithm::RS512) {
-                    key_size = Some(RsaKeySize::Rsa4096);
+                    bits = Some(RsaKeySize::Rsa4096);
                 }
                 info!(
                     "{}",
@@ -167,8 +174,8 @@ mod test {
                         key_type: kty,
                         algorithm: Some(alg),
                         usage: None,
-                        operation: ops.clone(),
-                        key_size,
+                        operations: Some(ops.clone()),
+                        bits,
                     })
                     .await
                     .unwrap()
