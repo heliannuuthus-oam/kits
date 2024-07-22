@@ -1,6 +1,6 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
+#![feature(let_chains)]
 use anyhow::Context;
 use errors::Result;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
@@ -63,12 +63,18 @@ fn main() -> Result<()> {
             jwt::jwk::generate_jwk,
             // common
             codec::convert_encoding,
+            utils::random_id,
+            utils::rsa_key_size,
             utils::digests,
             utils::elliptic_curve,
             utils::edwards,
             utils::kdfs,
             utils::ecies_enc_alg,
             utils::rsa_encryption_padding,
+            utils::jwkey_type,
+            utils::jwkey_algorithm,
+            utils::jwkey_usage,
+            utils::jwkey_operation,
         ])
         .run(tauri::generate_context!())
         .context("error while running tauri application")?;

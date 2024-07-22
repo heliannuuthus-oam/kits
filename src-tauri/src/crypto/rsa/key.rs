@@ -9,14 +9,14 @@ use crate::{
         private_bytes_to_pkcs8, private_pkcs8_to_bytes, public_bytes_to_pkcs8,
         public_pkcs8_to_bytes, PkcsDto,
     },
-    enums::{KeyFormat, Pkcs, TextEncoding},
+    enums::{KeyFormat, Pkcs, RsaKeySize, TextEncoding},
     errors::{Error, Result},
     utils::KeyTuple,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RsaKeyInfo {
-    key_size: usize,
+    key_size: RsaKeySize,
     encoding: TextEncoding,
     pkcs: Pkcs,
     format: KeyFormat,
@@ -24,18 +24,18 @@ pub struct RsaKeyInfo {
 
 #[tauri::command]
 pub async fn generate_rsa(
-    key_size: usize,
+    key_size: RsaKeySize,
     pkcs: Pkcs,
     format: KeyFormat,
     encoding: TextEncoding,
 ) -> Result<KeyTuple> {
     info!(
-        "generate rsa key, key_size: {}, pkcs_encoding: {:?}, encoding: {:?}",
+        "generate rsa key, key_size: {:?}, pkcs_encoding: {:?}, encoding: {:?}",
         key_size, pkcs, format
     );
     let mut rng: rand::prelude::ThreadRng = rand::thread_rng();
-    let private_key = RsaPrivateKey::new(&mut rng, key_size)
-        .expect("generate rsa key failed");
+    let private_key = RsaPrivateKey::new(&mut rng, key_size as usize)
+        .context("generate rsa key failed")?;
     let public_key = private_key.to_public_key();
     let private_key_bytes = private_key_to_bytes(private_key, pkcs, format)?;
     let public_key_bytes = public_key_to_bytes(public_key, pkcs, format)?;
@@ -163,7 +163,8 @@ pub fn parse_rsa(input: String) -> Result<RsaKeyInfo> {
     };
 
     Ok(RsaKeyInfo {
-        key_size,
+        key_size: RsaKeySize::from_repr(key_size)
+            .ok_or(Error::Unsupported(format!("{:?}", key_size)))?,
         encoding,
         format,
         pkcs,

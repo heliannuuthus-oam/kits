@@ -52,19 +52,25 @@ impl Debug for AesEncryptoinDto {
 }
 
 #[tauri::command]
-pub fn generate_iv(size: usize, encoding: TextEncoding) -> Result<String> {
+pub async fn generate_iv(
+    size: usize,
+    encoding: TextEncoding,
+) -> Result<String> {
     let iv = random_bytes(size)?;
     encoding.encode(&iv)
 }
 
 #[tauri::command]
-pub fn generate_aes(key_size: usize, encoding: TextEncoding) -> Result<String> {
+pub async fn generate_aes(
+    key_size: usize,
+    encoding: TextEncoding,
+) -> Result<String> {
     let key: Vec<u8> = random_bytes(key_size / 8)?;
     encoding.encode(&key)
 }
 
 #[tauri::command]
-pub fn crypto_aes(data: AesEncryptoinDto) -> Result<String> {
+pub async fn crypto_aes(data: AesEncryptoinDto) -> Result<String> {
     info!(
         "aes crypto-> for_encryption: {} mode: {:?} padding: {:?}",
         data.for_encryption, data.mode, data.padding
@@ -256,13 +262,13 @@ mod test {
         utils::random_bytes,
     };
 
-    #[test]
-    fn test_aes_gcm_generate_and_encryption() {
+    #[tokio::test]
+    async fn test_aes_gcm_generate_and_encryption() {
         for key_size in [128, 256] {
             let plaintext = "plaintext";
             let encoding = TextEncoding::Base64;
-            let key = generate_aes(key_size, encoding).unwrap();
-            let iv = generate_iv(12, encoding).unwrap();
+            let key = generate_aes(key_size, encoding).await.unwrap();
+            let iv = generate_iv(12, encoding).await.unwrap();
             let aad_bytes = random_bytes(128).unwrap();
             let aad = encoding.encode(&aad_bytes).unwrap();
             let ciphertext = crypto_aes(AesEncryptoinDto {
@@ -279,6 +285,7 @@ mod test {
                 aad_encoding: Some(encoding),
                 for_encryption: true,
             })
+            .await
             .unwrap();
             assert_eq!(
                 plaintext,
@@ -296,6 +303,7 @@ mod test {
                     aad_encoding: Some(encoding),
                     for_encryption: false
                 })
+                .await
                 .unwrap()
             )
         }

@@ -22,7 +22,7 @@ add_encryption_trait_impl!(EciesEdwardsDto {
 });
 
 #[tauri::command]
-pub fn ecies_edwards(data: EciesEdwardsDto) -> Result<String> {
+pub async fn ecies_edwards(data: EciesEdwardsDto) -> Result<String> {
     let input = data.get_input()?;
     let key = data.get_key()?;
     let output_encoding = data.get_output_encoding();

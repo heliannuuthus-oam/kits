@@ -13,7 +13,7 @@ use crate::{
     utils::KeyTuple,
 };
 #[tauri::command]
-pub fn generate_edwards(
+pub async fn generate_edwards(
     curve_name: EdwardsCurveName,
     format: KeyFormat,
     encoding: TextEncoding,
