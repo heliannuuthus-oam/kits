@@ -1,7 +1,7 @@
 import "./App.css";
 
 import { Flex, Layout } from "antd";
-import React from "react";
+import React, { useState } from "react";
 import { Content } from "./components/Content";
 import { Sider } from "./components/Sider";
 
@@ -17,30 +17,34 @@ const siderStyle: React.CSSProperties = {
 	bottom: 0,
 };
 
-const App: React.FC = () => (
-	<Flex>
-		<Layout hasSider>
-			<Sider
-				breakpoint="lg"
-				collapsedWidth="0"
-				trigger={null}
-				onCollapse={(collapsed, type) => {
-					console.log(collapsed, type);
-				}}
-				style={siderStyle}
-				width="25%"
-			/>
-			<Layout>
-				<Content
-					style={{
-						marginLeft: "25%",
-						height: "100%",
-						backgroundColor: "#fff",
+const App: React.FC = () => {
+	const [siderWidth, setSiderWidth] = useState<string | number>("25%");
+
+	return (
+		<Flex>
+			<Layout hasSider>
+				<Sider
+					breakpoint="lg"
+					collapsedWidth="0"
+					trigger={null}
+					onCollapse={(collapsed, _) => {
+						setSiderWidth(collapsed ? 0 : "25%");
 					}}
+					style={siderStyle}
+					width={siderWidth}
 				/>
+				<Layout>
+					<Content
+						style={{
+							marginLeft: siderWidth,
+							height: "100%",
+							backgroundColor: "#fff",
+						}}
+					/>
+				</Layout>
 			</Layout>
-		</Layout>
-	</Flex>
-);
+		</Flex>
+	);
+};
 
 export default App;

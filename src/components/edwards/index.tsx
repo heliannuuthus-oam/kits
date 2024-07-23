@@ -1,19 +1,15 @@
-import { FormInstance, SelectProps } from "antd";
-import {
-	EdwardsCurveName,
-	PkcsFormat,
-	PkcsFormats,
-} from "../converter/converter";
 import { invoke } from "@tauri-apps/api";
-import { TextEncoding } from "../codec/codec";
+import { FormInstance, SelectProps } from "antd";
 import { fetchEdwardsCuveNames } from "../../api/edwards";
+import { TextEncoding } from "../codec/codec";
+import { PkcsFormat, PkcsFormats } from "../converter/converter";
 
 export type EdwardsDeriveKeyForm = {
 	privateKey: string;
 	publicKey: string;
 	pkcsFormat: PkcsFormat;
 	encoding: TextEncoding;
-	curveName: EdwardsCurveName;
+	curveName: string;
 };
 
 export const getEdwardsCurveNames = async (): Promise<
@@ -53,10 +49,8 @@ export const deriveEdwardsKey = async (
 	setGenerating(false);
 };
 export const generateEdwardsKey = async (
-	form: FormInstance<EdwardsDeriveKeyForm>,
-	setGenerating: (generating: boolean) => void
+	form: FormInstance<EdwardsDeriveKeyForm>
 ) => {
-	setGenerating(true);
 	try {
 		const { curveName, encoding } = form.getFieldsValue([
 			"curveName",
@@ -79,5 +73,4 @@ export const generateEdwardsKey = async (
 	} catch (err) {
 		console.log(err);
 	}
-	setGenerating(false);
 };

@@ -1,14 +1,14 @@
-import { FormInstance } from "antd";
-import { PkcsFormat, PkcsFormats } from "../converter/converter";
 import { invoke } from "@tauri-apps/api";
+import { FormInstance } from "antd";
 import { TextEncoding } from "../codec/codec";
+import { PkcsFormat, PkcsFormats } from "../converter/converter";
 
 export type RsaKeyDeriveForm = {
 	privateKey: string;
 	publicKey: string;
 	pkcsFormat: PkcsFormat;
 	encoding: TextEncoding;
-	keySize: number;
+	keySize: number | string;
 };
 
 export const deriveRsaKey = async (
@@ -34,18 +34,10 @@ export const deriveRsaKey = async (
 	}
 	setGenerating(false);
 };
-export const generateRsaKey = async (
-	form: FormInstance<RsaKeyDeriveForm>,
-	setGenerating: (generating: boolean) => void
-) => {
-	setGenerating(true);
+export const generateRsaKey = async (form: FormInstance<RsaKeyDeriveForm>) => {
 	try {
 		const { keySize, encoding } = form.getFieldsValue(["keySize", "encoding"]);
-		console.log(form.getFieldsValue(true));
-
 		const pkcsFormat: PkcsFormat = form.getFieldValue("pkcsFormat");
-		console.log(pkcsFormat);
-
 		const pkcs = PkcsFormats[pkcsFormat];
 		pkcs.setEncoding(encoding);
 		const [privateKey, publicKey] = await invoke<string[]>("generate_rsa", {
@@ -60,5 +52,4 @@ export const generateRsaKey = async (
 	} catch (err) {
 		console.log(err);
 	}
-	setGenerating(false);
 };

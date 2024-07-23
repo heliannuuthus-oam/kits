@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import Collapse from "../../components/Collapse";
 import { FormLabel } from "../../components/FormLabel";
 import { TextEncoding } from "../../components/codec/codec";
-import { RsaPadding } from "../../components/rsa/padding";
+import { RsaPadding } from "../../components/rsa/Padding";
 
 export const DefaultTextArea = ({ style, ...props }: TextAreaProps) => {
 	return <TextArea {...props} style={{ resize: "none", ...style }}></TextArea>;

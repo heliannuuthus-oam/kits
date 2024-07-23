@@ -1,15 +1,15 @@
-import { FormInstance, SelectProps } from "antd";
-import { EccCurveName, PkcsFormat, PkcsFormats } from "../converter/converter";
 import { invoke } from "@tauri-apps/api";
-import { TextEncoding } from "../codec/codec";
+import { FormInstance, SelectProps } from "antd";
 import { fetchCurveNames } from "../../api/ecc";
+import { TextEncoding } from "../codec/codec";
+import { PkcsFormat, PkcsFormats } from "../converter/converter";
 
 export type EccKeyDeriveForm = {
 	privateKey: string;
 	publicKey: string;
 	pkcsFormat: PkcsFormat;
 	encoding: TextEncoding;
-	curveName: EccCurveName;
+	curveName: string;
 };
 
 export const getEccCurveNames = async (): Promise<SelectProps["options"]> => {
@@ -48,11 +48,7 @@ export const deriveEccKey = async (
 	setGenerating(false);
 };
 
-export const generateEccKey = async (
-	form: FormInstance<EccKeyDeriveForm>,
-	setGenerating: (generating: boolean) => void
-) => {
-	setGenerating(true);
+export const generateEccKey = async (form: FormInstance<EccKeyDeriveForm>) => {
 	try {
 		const { curveName, encoding } = form.getFieldsValue([
 			"curveName",
@@ -73,5 +69,4 @@ export const generateEccKey = async (
 	} catch (err) {
 		console.log(err);
 	}
-	setGenerating(false);
 };
