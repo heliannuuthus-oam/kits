@@ -43,6 +43,7 @@ function ConvertSelectInner<T extends PkcsFormat>(
 			);
 			setInputs({ privateKey: output[0], publicKey: output[1] });
 			setPkcsFormat(val);
+
 			onChange?.(val);
 		} catch (err) {
 			messageApi.warning("error: " + err);

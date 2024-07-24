@@ -1,4 +1,10 @@
+import { Form } from "antd";
+import useFormInstance from "antd/es/form/hooks/useFormInstance";
 import { forwardRef } from "react";
+import {
+	derviceKeyConfigButtonHeight,
+	derviceKeyConfigButtonWidth,
+} from "../../pages/derive";
 import {
 	ConvertRef,
 	ConvertSelectProps,
@@ -42,3 +48,22 @@ export const EdwardsPkcsSelect = forwardRef<
 		);
 	}
 );
+
+export const EdwardsPkcsFormat = () => {
+	const form = useFormInstance();
+	return (
+		<Form.Item noStyle name={["edwards", "pkcsFormat"]}>
+			<EdwardsPkcsSelect
+				converter={edwardPkcsConverter}
+				style={{
+					minWidth: derviceKeyConfigButtonWidth,
+					minHeight: derviceKeyConfigButtonHeight,
+				}}
+				getInputs={() => form.getFieldValue("edwards")}
+				setInputs={(edwards) => {
+					form.setFieldsValue({ edwards });
+				}}
+			/>
+		</Form.Item>
+	);
+};

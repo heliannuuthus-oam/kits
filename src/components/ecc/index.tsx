@@ -1,15 +1,15 @@
-import { FormInstance, SelectProps } from "antd";
-import { EccCurveName, PkcsFormat, PkcsFormats } from "../converter/converter";
 import { invoke } from "@tauri-apps/api";
-import { TextEncoding } from "../codec/codec";
+import { FormInstance, SelectProps } from "antd";
 import { fetchCurveNames } from "../../api/ecc";
+import { TextEncoding } from "../codec/codec";
+import { PkcsFormat, PkcsFormats } from "../converter/converter";
 
 export type EccKeyDeriveForm = {
 	privateKey: string;
 	publicKey: string;
 	pkcsFormat: PkcsFormat;
 	encoding: TextEncoding;
-	curveName: EccCurveName;
+	curveName: string;
 };
 
 export const getEccCurveNames = async (): Promise<SelectProps["options"]> => {
@@ -48,17 +48,17 @@ export const deriveEccKey = async (
 	setGenerating(false);
 };
 
-export const generateEccKey = async (
-	form: FormInstance<EccKeyDeriveForm>,
-	setGenerating: (generating: boolean) => void
-) => {
-	setGenerating(true);
+export const generateEccKey = async (form: FormInstance) => {
 	try {
-		const { curveName, encoding } = form.getFieldsValue([
-			"curveName",
-			"encoding",
-		]);
-		const pkcsFormat: PkcsFormat = form.getFieldValue("pkcsFormat");
+		const {
+			curveName,
+			encoding,
+			pkcsFormat,
+		}: {
+			curveName: string;
+			encoding: TextEncoding;
+			pkcsFormat: PkcsFormat;
+		} = form.getFieldValue("elliptic_curve");
 		const pkcs = PkcsFormats[pkcsFormat];
 		pkcs.setEncoding(encoding);
 		const [privateKey, publicKey] = await invoke<string[]>("generate_ecc", {
@@ -67,11 +67,12 @@ export const generateEccKey = async (
 		});
 
 		form.setFieldsValue({
-			publicKey,
-			privateKey,
+			elliptic_curve: {
+				publicKey,
+				privateKey,
+			},
 		});
 	} catch (err) {
 		console.log(err);
 	}
-	setGenerating(false);
 };

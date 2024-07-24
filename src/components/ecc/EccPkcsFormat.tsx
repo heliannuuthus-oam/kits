@@ -45,3 +45,30 @@ export const EccPkcsSelect = forwardRef<
 		);
 	}
 );
+
+import { Form } from "antd";
+import useFormInstance from "antd/es/form/hooks/useFormInstance";
+import {
+	derviceKeyConfigButtonHeight,
+	derviceKeyConfigButtonWidth,
+} from "../../pages/derive";
+
+export const EccPkcsFormat = () => {
+	const form = useFormInstance();
+
+	return (
+		<Form.Item noStyle name={["elliptic_curve", "pkcsFormat"]}>
+			<EccPkcsSelect
+				converter={eccPkcsConverter}
+				style={{
+					minWidth: derviceKeyConfigButtonWidth,
+					minHeight: derviceKeyConfigButtonHeight,
+				}}
+				getInputs={() => form.getFieldValue("elliptic_curve")}
+				setInputs={(elliptic_curve) => {
+					form.setFieldsValue({ elliptic_curve });
+				}}
+			/>
+		</Form.Item>
+	);
+};

@@ -1,12 +1,18 @@
+import { Form } from "antd";
+import useFormInstance from "antd/es/form/hooks/useFormInstance";
 import { forwardRef } from "react";
 import {
+	derviceKeyConfigButtonHeight,
+	derviceKeyConfigButtonWidth,
+} from "../../pages/derive";
+import {
+	ConvertRef,
+	ConvertSelectProps,
 	Pkcs1Format,
 	Pkcs8Format,
-	ConvertRef,
-	rsaPkcsConverter,
-	ConvertSelectProps,
-	RsaFormat,
 	PkcsEncodingProps,
+	RsaFormat,
+	rsaPkcsConverter,
 } from "../converter/converter";
 import { PkcsFormatSelect } from "../converter/PkcsFormatSelect";
 
@@ -45,3 +51,22 @@ export const RsaPkcsSelect = forwardRef<
 		);
 	}
 );
+
+export const RsaPkcsFormat = () => {
+	const form = useFormInstance();
+	return (
+		<Form.Item name={["rsa", "pkcsFormat"]} noStyle>
+			<RsaPkcsSelect
+				converter={rsaPkcsConverter}
+				style={{
+					minWidth: derviceKeyConfigButtonWidth,
+					minHeight: derviceKeyConfigButtonHeight,
+				}}
+				getInputs={() => form.getFieldValue("rsa")}
+				setInputs={(rsa) => {
+					form.setFieldsValue({ rsa });
+				}}
+			/>
+		</Form.Item>
+	);
+};

@@ -1,19 +1,15 @@
-import { FormInstance, SelectProps } from "antd";
-import {
-	EdwardsCurveName,
-	PkcsFormat,
-	PkcsFormats,
-} from "../converter/converter";
 import { invoke } from "@tauri-apps/api";
-import { TextEncoding } from "../codec/codec";
+import { FormInstance, SelectProps } from "antd";
 import { fetchEdwardsCuveNames } from "../../api/edwards";
+import { TextEncoding } from "../codec/codec";
+import { PkcsFormat, PkcsFormats } from "../converter/converter";
 
 export type EdwardsDeriveKeyForm = {
 	privateKey: string;
 	publicKey: string;
 	pkcsFormat: PkcsFormat;
 	encoding: TextEncoding;
-	curveName: EdwardsCurveName;
+	curveName: string;
 };
 
 export const getEdwardsCurveNames = async (): Promise<
@@ -36,9 +32,8 @@ export const deriveEdwardsKey = async (
 ) => {
 	setGenerating(true);
 	try {
-		const { curveName, privateKey, pkcsFormat, encoding } = form.getFieldsValue(
-			["curveName", "privateKey", "pkcsFormat", "encoding"]
-		);
+		const { curveName, privateKey, pkcsFormat, encoding } =
+			form.getFieldValue("edwards");
 		const pkcs = PkcsFormats[pkcsFormat as PkcsFormat];
 		pkcs.setEncoding(encoding as TextEncoding);
 		const publicKey = await invoke<string>("derive_edwards", {
@@ -52,18 +47,17 @@ export const deriveEdwardsKey = async (
 	}
 	setGenerating(false);
 };
-export const generateEdwardsKey = async (
-	form: FormInstance<EdwardsDeriveKeyForm>,
-	setGenerating: (generating: boolean) => void
-) => {
-	setGenerating(true);
+export const generateEdwardsKey = async (form: FormInstance) => {
 	try {
-		const { curveName, encoding } = form.getFieldsValue([
-			"curveName",
-			"encoding",
-		]);
-		const pkcsFormat: PkcsFormat = form.getFieldValue("pkcsFormat");
-		console.log(pkcsFormat);
+		const {
+			curveName,
+			encoding,
+			pkcsFormat,
+		}: {
+			curveName: string;
+			encoding: TextEncoding;
+			pkcsFormat: PkcsFormat;
+		} = form.getFieldValue("edwards");
 
 		const pkcs = PkcsFormats[pkcsFormat];
 		pkcs.setEncoding(encoding);
@@ -73,11 +67,12 @@ export const generateEdwardsKey = async (
 		});
 
 		form.setFieldsValue({
-			publicKey,
-			privateKey,
+			edwards: {
+				publicKey,
+				privateKey,
+			},
 		});
 	} catch (err) {
 		console.log(err);
 	}
-	setGenerating(false);
 };

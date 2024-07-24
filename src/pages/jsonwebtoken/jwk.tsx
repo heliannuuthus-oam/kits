@@ -354,6 +354,9 @@ const JWK = () => {
 								color: "#cccccc",
 								backgroundColor: "#2c3441",
 								display: content == "" ? "none" : "block",
+								overflow: "auto",
+								maxHeight: 450,
+								minHeight: 320,
 							},
 						}}
 					>
