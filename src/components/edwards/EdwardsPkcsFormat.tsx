@@ -1,6 +1,6 @@
-import { Form, FormInstance } from "antd";
+import { Form } from "antd";
+import useFormInstance from "antd/es/form/hooks/useFormInstance";
 import { forwardRef } from "react";
-import { EdwardsDeriveKeyForm } from ".";
 import {
 	derviceKeyConfigButtonHeight,
 	derviceKeyConfigButtonWidth,
@@ -49,33 +49,21 @@ export const EdwardsPkcsSelect = forwardRef<
 	}
 );
 
-export const EdwardsPkcsFormat = ({
-	form,
-}: {
-	form: FormInstance<EdwardsDeriveKeyForm>;
-}) => {
+export const EdwardsPkcsFormat = () => {
+	const form = useFormInstance();
 	return (
-		<Form form={form}>
-			<Form.Item noStyle name="pkcsFormat">
-				<EdwardsPkcsSelect
-					converter={edwardPkcsConverter}
-					style={{
-						minWidth: derviceKeyConfigButtonWidth,
-						minHeight: derviceKeyConfigButtonHeight,
-					}}
-					getInputs={() =>
-						form.getFieldsValue([
-							"privateKey",
-							"publicKey",
-							"encoding",
-							"curveName",
-						])
-					}
-					setInputs={(value) => {
-						form.setFieldsValue(value);
-					}}
-				/>
-			</Form.Item>
-		</Form>
+		<Form.Item noStyle name={["edwards", "pkcsFormat"]}>
+			<EdwardsPkcsSelect
+				converter={edwardPkcsConverter}
+				style={{
+					minWidth: derviceKeyConfigButtonWidth,
+					minHeight: derviceKeyConfigButtonHeight,
+				}}
+				getInputs={() => form.getFieldValue("edwards")}
+				setInputs={(edwards) => {
+					form.setFieldsValue({ edwards });
+				}}
+			/>
+		</Form.Item>
 	);
 };

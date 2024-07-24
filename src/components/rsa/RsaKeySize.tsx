@@ -1,18 +1,16 @@
-import { Form, FormInstance, Select, SelectProps } from "antd";
+import { Form, Select, SelectProps } from "antd";
+import useFormInstance from "antd/es/form/hooks/useFormInstance";
 import { useEffect, useState } from "react";
-import { RsaKeyDeriveForm } from ".";
 import { fetchRsaKeySize } from "../../api/rsa";
 
-export const RsaKeySize = ({
-	form,
-}: {
-	form: FormInstance<RsaKeyDeriveForm>;
-}) => {
+export const RsaKeySize = () => {
 	const [keySizes, setKeySizes] = useState<SelectProps["options"]>();
+
+	const form = useFormInstance();
 
 	useEffect(() => {
 		fetchRsaKeySize().then((keySizes) => {
-			form.setFieldsValue({ keySize: keySizes[0] });
+			form.setFieldsValue({ rsa: { keySize: keySizes[0] } });
 			setKeySizes(
 				keySizes.map((keySize) => {
 					return {
@@ -25,10 +23,8 @@ export const RsaKeySize = ({
 	}, [fetchRsaKeySize]);
 
 	return (
-		<Form form={form}>
-			<Form.Item noStyle name="keySize">
-				<Select options={keySizes} style={{ minWidth: 120 }} />
-			</Form.Item>
-		</Form>
+		<Form.Item noStyle name={["rsa", "keySize"]}>
+			<Select options={keySizes} style={{ minWidth: 120 }} />
+		</Form.Item>
 	);
 };

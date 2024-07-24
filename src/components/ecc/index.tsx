@@ -48,13 +48,17 @@ export const deriveEccKey = async (
 	setGenerating(false);
 };
 
-export const generateEccKey = async (form: FormInstance<EccKeyDeriveForm>) => {
+export const generateEccKey = async (form: FormInstance) => {
 	try {
-		const { curveName, encoding } = form.getFieldsValue([
-			"curveName",
-			"encoding",
-		]);
-		const pkcsFormat: PkcsFormat = form.getFieldValue("pkcsFormat");
+		const {
+			curveName,
+			encoding,
+			pkcsFormat,
+		}: {
+			curveName: string;
+			encoding: TextEncoding;
+			pkcsFormat: PkcsFormat;
+		} = form.getFieldValue("elliptic_curve");
 		const pkcs = PkcsFormats[pkcsFormat];
 		pkcs.setEncoding(encoding);
 		const [privateKey, publicKey] = await invoke<string[]>("generate_ecc", {
@@ -63,8 +67,10 @@ export const generateEccKey = async (form: FormInstance<EccKeyDeriveForm>) => {
 		});
 
 		form.setFieldsValue({
-			publicKey,
-			privateKey,
+			elliptic_curve: {
+				publicKey,
+				privateKey,
+			},
 		});
 	} catch (err) {
 		console.log(err);

@@ -1,22 +1,19 @@
-import { Form, FormInstance, Select, SelectProps } from "antd";
+import { Form, Select, SelectProps } from "antd";
+import useFormInstance from "antd/es/form/hooks/useFormInstance";
 import { useEffect, useState } from "react";
-import { EccKeyDeriveForm } from ".";
 import { fetchCurveNames } from "../../api/ecc";
 import {
 	derviceKeyConfigButtonHeight,
 	derviceKeyConfigButtonWidth,
 } from "../../pages/derive";
 
-export const EccCurveName = ({
-	form,
-}: {
-	form: FormInstance<EccKeyDeriveForm>;
-}) => {
+export const EccCurveName = () => {
 	const [curveNames, setCurveNames] = useState<SelectProps["options"]>();
+	const form = useFormInstance();
 
 	useEffect(() => {
 		fetchCurveNames().then((curveNames) => {
-			form.setFieldsValue({ curveName: curveNames[0] });
+			form.setFieldsValue({ elliptic_curve: { curveName: curveNames[0] } });
 			setCurveNames(
 				curveNames.map((curveName) => {
 					return {
@@ -29,16 +26,14 @@ export const EccCurveName = ({
 	}, [fetchCurveNames]);
 
 	return (
-		<Form form={form}>
-			<Form.Item noStyle name="curveName">
-				<Select
-					options={curveNames}
-					style={{
-						minWidth: derviceKeyConfigButtonWidth,
-						minHeight: derviceKeyConfigButtonHeight,
-					}}
-				/>
-			</Form.Item>
-		</Form>
+		<Form.Item noStyle name={["elliptic_curve", "curveName"]}>
+			<Select
+				options={curveNames}
+				style={{
+					minWidth: derviceKeyConfigButtonWidth,
+					minHeight: derviceKeyConfigButtonHeight,
+				}}
+			/>
+		</Form.Item>
 	);
 };

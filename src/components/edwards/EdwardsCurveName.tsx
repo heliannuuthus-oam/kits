@@ -1,22 +1,19 @@
-import { Form, FormInstance, Select, SelectProps } from "antd";
+import { Form, Select, SelectProps } from "antd";
+import useFormInstance from "antd/es/form/hooks/useFormInstance";
 import { useEffect, useState } from "react";
-import { EdwardsDeriveKeyForm } from ".";
 import { fetchEdwardsCuveNames } from "../../api/edwards";
 import {
 	derviceKeyConfigButtonHeight,
 	derviceKeyConfigButtonWidth,
 } from "../../pages/derive";
 
-export const EdwardsCurveName = ({
-	form,
-}: {
-	form: FormInstance<EdwardsDeriveKeyForm>;
-}) => {
+export const EdwardsCurveName = () => {
+	const form = useFormInstance();
 	const [curveNames, setCurveNames] = useState<SelectProps["options"]>();
 
 	useEffect(() => {
 		fetchEdwardsCuveNames().then((curveNames) => {
-			form.setFieldsValue({ curveName: curveNames[0] });
+			form.setFieldsValue({ edwards: { curveName: curveNames[0] } });
 			setCurveNames(
 				curveNames.map((curveName) => {
 					return {
@@ -29,16 +26,14 @@ export const EdwardsCurveName = ({
 	}, [fetchEdwardsCuveNames]);
 
 	return (
-		<Form form={form}>
-			<Form.Item noStyle name="curveName">
-				<Select
-					options={curveNames}
-					style={{
-						minWidth: derviceKeyConfigButtonWidth,
-						minHeight: derviceKeyConfigButtonHeight,
-					}}
-				/>
-			</Form.Item>
-		</Form>
+		<Form.Item noStyle name={["edwards", "curveName"]}>
+			<Select
+				options={curveNames}
+				style={{
+					minWidth: derviceKeyConfigButtonWidth,
+					minHeight: derviceKeyConfigButtonHeight,
+				}}
+			/>
+		</Form.Item>
 	);
 };

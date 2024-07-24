@@ -34,10 +34,18 @@ export const deriveRsaKey = async (
 	}
 	setGenerating(false);
 };
-export const generateRsaKey = async (form: FormInstance<RsaKeyDeriveForm>) => {
+export const generateRsaKey = async (form: FormInstance) => {
+	console.log(form.getFieldsValue(["rsa"]));
 	try {
-		const { keySize, encoding } = form.getFieldsValue(["keySize", "encoding"]);
-		const pkcsFormat: PkcsFormat = form.getFieldValue("pkcsFormat");
+		const {
+			keySize,
+			encoding,
+			pkcsFormat,
+		}: {
+			keySize: string | number;
+			encoding: TextEncoding;
+			pkcsFormat: PkcsFormat;
+		} = form.getFieldValue("rsa");
 		const pkcs = PkcsFormats[pkcsFormat];
 		pkcs.setEncoding(encoding);
 		const [privateKey, publicKey] = await invoke<string[]>("generate_rsa", {
@@ -46,8 +54,10 @@ export const generateRsaKey = async (form: FormInstance<RsaKeyDeriveForm>) => {
 		});
 
 		form.setFieldsValue({
-			publicKey,
-			privateKey,
+			rsa: {
+				publicKey,
+				privateKey,
+			},
 		});
 	} catch (err) {
 		console.log(err);

@@ -1,6 +1,6 @@
-import { Form, FormInstance } from "antd";
+import { Form } from "antd";
+import useFormInstance from "antd/es/form/hooks/useFormInstance";
 import { forwardRef } from "react";
-import { RsaKeyDeriveForm } from ".";
 import {
 	derviceKeyConfigButtonHeight,
 	derviceKeyConfigButtonWidth,
@@ -52,28 +52,21 @@ export const RsaPkcsSelect = forwardRef<
 	}
 );
 
-export const RsaPkcsFormat = ({
-	form,
-}: {
-	form: FormInstance<RsaKeyDeriveForm>;
-}) => {
+export const RsaPkcsFormat = () => {
+	const form = useFormInstance();
 	return (
-		<Form form={form}>
-			<Form.Item name="pkcsFormat" noStyle>
-				<RsaPkcsSelect
-					converter={rsaPkcsConverter}
-					style={{
-						minWidth: derviceKeyConfigButtonWidth,
-						minHeight: derviceKeyConfigButtonHeight,
-					}}
-					getInputs={() =>
-						form.getFieldsValue(["privateKey", "publicKey", "encoding"])
-					}
-					setInputs={(value) => {
-						form.setFieldsValue(value);
-					}}
-				/>
-			</Form.Item>
-		</Form>
+		<Form.Item name={["rsa", "pkcsFormat"]} noStyle>
+			<RsaPkcsSelect
+				converter={rsaPkcsConverter}
+				style={{
+					minWidth: derviceKeyConfigButtonWidth,
+					minHeight: derviceKeyConfigButtonHeight,
+				}}
+				getInputs={() => form.getFieldValue("rsa")}
+				setInputs={(rsa) => {
+					form.setFieldsValue({ rsa });
+				}}
+			/>
+		</Form.Item>
 	);
 };

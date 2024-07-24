@@ -30,40 +30,29 @@ export const EdwardsEncodingSelect = forwardRef<
 	}
 );
 
-import { Form, FormInstance } from "antd";
-import { EdwardsDeriveKeyForm } from ".";
+import { Form } from "antd";
+import useFormInstance from "antd/es/form/hooks/useFormInstance";
 import {
 	derviceKeyConfigButtonHeight,
 	derviceKeyConfigButtonWidth,
 } from "../../pages/derive";
 
-export const EdwardsEncoding = ({
-	form,
-}: {
-	form: FormInstance<EdwardsDeriveKeyForm>;
-}) => {
+export const EdwardsEncoding = () => {
+	const form = useFormInstance();
+
 	return (
-		<Form form={form}>
-			<Form.Item noStyle name="encoding">
-				<EdwardsEncodingSelect
-					converter={edwardsEncodingConverter}
-					getInputs={() =>
-						form.getFieldsValue([
-							"privateKey",
-							"publicKey",
-							"pkcsFormat",
-							"curveName",
-						])
-					}
-					setInputs={(value) => {
-						form.setFieldsValue(value);
-					}}
-					style={{
-						minWidth: derviceKeyConfigButtonWidth,
-						minHeight: derviceKeyConfigButtonHeight,
-					}}
-				/>
-			</Form.Item>
-		</Form>
+		<Form.Item noStyle name={["edwards", "encoding"]}>
+			<EdwardsEncodingSelect
+				converter={edwardsEncodingConverter}
+				getInputs={() => form.getFieldValue("edwards")}
+				setInputs={(edwards) => {
+					form.setFieldsValue({ edwards });
+				}}
+				style={{
+					minWidth: derviceKeyConfigButtonWidth,
+					minHeight: derviceKeyConfigButtonHeight,
+				}}
+			/>
+		</Form.Item>
 	);
 };

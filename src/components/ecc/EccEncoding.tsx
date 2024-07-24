@@ -25,40 +25,29 @@ export const EccEncodingSelect = forwardRef<
 	);
 });
 
-import { Form, FormInstance } from "antd";
-import { EccKeyDeriveForm } from ".";
+import { Form } from "antd";
+import useFormInstance from "antd/es/form/hooks/useFormInstance";
 import {
 	derviceKeyConfigButtonHeight,
 	derviceKeyConfigButtonWidth,
 } from "../../pages/derive";
 
-export const EccEncoding = ({
-	form,
-}: {
-	form: FormInstance<EccKeyDeriveForm>;
-}) => {
+export const EccEncoding = () => {
+	const form = useFormInstance();
+
 	return (
-		<Form form={form}>
-			<Form.Item noStyle name="encoding">
-				<EccEncodingSelect
-					converter={eccEncodingConverter}
-					getInputs={() =>
-						form.getFieldsValue([
-							"privateKey",
-							"publicKey",
-							"pkcsFormat",
-							"curveName",
-						])
-					}
-					setInputs={(value) => {
-						form.setFieldsValue(value);
-					}}
-					style={{
-						minWidth: derviceKeyConfigButtonWidth,
-						minHeight: derviceKeyConfigButtonHeight,
-					}}
-				/>
-			</Form.Item>
-		</Form>
+		<Form.Item noStyle name={["elliptic_curve", "encoding"]}>
+			<EccEncodingSelect
+				converter={eccEncodingConverter}
+				getInputs={() => form.getFieldValue("elliptic_curve")}
+				setInputs={(elliptic_curve) => {
+					form.setFieldsValue({ elliptic_curve });
+				}}
+				style={{
+					minWidth: derviceKeyConfigButtonWidth,
+					minHeight: derviceKeyConfigButtonHeight,
+				}}
+			/>
+		</Form.Item>
 	);
 };

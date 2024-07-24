@@ -46,40 +46,29 @@ export const EccPkcsSelect = forwardRef<
 	}
 );
 
-import { Form, FormInstance } from "antd";
-import { EccKeyDeriveForm } from ".";
+import { Form } from "antd";
+import useFormInstance from "antd/es/form/hooks/useFormInstance";
 import {
 	derviceKeyConfigButtonHeight,
 	derviceKeyConfigButtonWidth,
 } from "../../pages/derive";
 
-export const EccPkcsFormat = ({
-	form,
-}: {
-	form: FormInstance<EccKeyDeriveForm>;
-}) => {
+export const EccPkcsFormat = () => {
+	const form = useFormInstance();
+
 	return (
-		<Form form={form}>
-			<Form.Item name="pkcsFormat" noStyle>
-				<EccPkcsSelect
-					converter={eccPkcsConverter}
-					style={{
-						minWidth: derviceKeyConfigButtonWidth,
-						minHeight: derviceKeyConfigButtonHeight,
-					}}
-					getInputs={() =>
-						form.getFieldsValue([
-							"privateKey",
-							"publicKey",
-							"encoding",
-							"curveName",
-						])
-					}
-					setInputs={(value) => {
-						form.setFieldsValue(value);
-					}}
-				/>
-			</Form.Item>
-		</Form>
+		<Form.Item noStyle name={["elliptic_curve", "pkcsFormat"]}>
+			<EccPkcsSelect
+				converter={eccPkcsConverter}
+				style={{
+					minWidth: derviceKeyConfigButtonWidth,
+					minHeight: derviceKeyConfigButtonHeight,
+				}}
+				getInputs={() => form.getFieldValue("elliptic_curve")}
+				setInputs={(elliptic_curve) => {
+					form.setFieldsValue({ elliptic_curve });
+				}}
+			/>
+		</Form.Item>
 	);
 };
