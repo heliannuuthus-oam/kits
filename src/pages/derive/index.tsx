@@ -6,6 +6,7 @@ import { createStyles } from "antd-style";
 import { CardTabListType } from "antd/es/card";
 import { useForm } from "antd/es/form/Form";
 import useFormInstance from "antd/es/form/hooks/useFormInstance";
+import TextArea from "antd/es/input/TextArea";
 import useMessage from "antd/es/message/useMessage";
 import { TextEncoding } from "../../components/codec/codec";
 import {
@@ -75,7 +76,7 @@ const eccInitFormValue: EccKeyDeriveForm = {
 	publicKey: "",
 	pkcsFormat: Pkcs8Format.PKCS8_PEM,
 	encoding: TextEncoding.UTF8,
-	curveName: EcCuvrname.Secp256k1,
+	curveName: EcCuvrname.NIST_P256,
 };
 const edwardsInitFormValue: EdwardsDeriveKeyForm = {
 	privateKey: "",
@@ -215,7 +216,6 @@ const KeyDerivationInner = ({ activeKey }: { activeKey: string }) => {
 	const form = useFormInstance();
 
 	useEffect(() => {
-		console.log("execute", activeKey);
 		switch (activeKey) {
 			case "rsa":
 				generateRsaKey(form).then();
@@ -228,16 +228,6 @@ const KeyDerivationInner = ({ activeKey }: { activeKey: string }) => {
 				break;
 		}
 	}, [generateRsaKey, generateEccKey, generateEdwardsKey]);
-
-	const privateKey = Form.useWatch([activeKey, "privateKey"], {
-		form,
-		preserve: true,
-	});
-
-	const publicKey = Form.useWatch([activeKey, "publicKey"], {
-		form,
-		preserve: true,
-	});
 
 	const [msgApi, context] = useMessage({
 		duration: 4,
@@ -269,7 +259,17 @@ const KeyDerivationInner = ({ activeKey }: { activeKey: string }) => {
 					}
 					styles={cardStyles}
 				>
-					{privateKey}
+					<Form.Item name={[activeKey, "privateKey"]} noStyle>
+						<TextArea
+							autoSize={{ minRows: 16, maxRows: 16 }}
+							variant="borderless"
+							style={{
+								color: "#cccccc",
+								backgroundColor: "#2c3441",
+								resize: "none",
+							}}
+						/>
+					</Form.Item>
 				</Card>
 			</Col>
 			<Col offset={1} span={11}>
@@ -294,7 +294,17 @@ const KeyDerivationInner = ({ activeKey }: { activeKey: string }) => {
 					}
 					styles={cardStyles}
 				>
-					{publicKey}
+					<Form.Item name={[activeKey, "publicKey"]} noStyle>
+						<TextArea
+							autoSize={{ minRows: 16, maxRows: 16 }}
+							variant="borderless"
+							style={{
+								color: "#cccccc",
+								backgroundColor: "#2c3441",
+								resize: "none",
+							}}
+						/>
+					</Form.Item>
 				</Card>
 			</Col>
 		</Row>

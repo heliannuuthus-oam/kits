@@ -60,7 +60,6 @@ export const Sider = ({ ...props }: SiderProps) => {
 	const { pathname } = useLocation();
 
 	useEffect(() => {
-		console.log(menuItems);
 		const path = pathname.substring(1);
 		const leaf = path.lastIndexOf("/");
 		const parent = path.substring(

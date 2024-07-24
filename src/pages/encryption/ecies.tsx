@@ -11,15 +11,16 @@ import {
 import TextArea, { TextAreaProps } from "antd/es/input/TextArea";
 
 import { invoke } from "@tauri-apps/api";
+import { writeText } from "@tauri-apps/api/clipboard";
 import { FormInstance, useWatch } from "antd/es/form/Form";
+import useMessage from "antd/es/message/useMessage";
 import { useEffect, useState } from "react";
+import { error } from "tauri-plugin-log-api";
 import Collapse from "../../components/Collapse";
 import { FormLabel } from "../../components/FormLabel";
 import { TextEncoding } from "../../components/codec/codec";
 import { getEccCurveNames } from "../../components/ecc";
 import { EciesEncryptionForm, EciesKdf } from "../../components/ecc/kdf";
-import { writeText } from "@tauri-apps/api/clipboard";
-import useMessage from "antd/es/message/useMessage";
 
 const DefaultTextArea = ({ style, ...props }: TextAreaProps) => {
 	return <TextArea {...props} style={{ resize: "none", ...style }}></TextArea>;
@@ -85,7 +86,6 @@ const EciesInner = ({ form }: { form: FormInstance }) => {
 			const key = form.getFieldValue(
 				!forEncryption ? "privateKey" : "publicKey"
 			);
-			console.log(form.getFieldsValue(true));
 			const keyInfo = await parseEccKey(key);
 			const output = await invoke<string>("ecies", {
 				data: {
@@ -101,8 +101,8 @@ const EciesInner = ({ form }: { form: FormInstance }) => {
 				await writeText(output);
 				msg.success("copied output");
 			}
-		} catch (error) {
-			console.log(error);
+		} catch (err) {
+			error(err as string);
 		}
 	};
 

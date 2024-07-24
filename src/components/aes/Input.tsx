@@ -9,13 +9,14 @@ import {
 	Space,
 	notification,
 } from "antd";
-import { useState } from "react";
-import { TextEncoding } from "../codec/codec";
-import { EncryptionMode } from "./Setting";
-import { AesEncryptionForm } from "../../pages/encryption/aes";
-import useFormInstance from "antd/es/form/hooks/useFormInstance";
 import { useWatch } from "antd/es/form/Form";
+import useFormInstance from "antd/es/form/hooks/useFormInstance";
+import { useState } from "react";
+import { error } from "tauri-plugin-log-api";
+import { AesEncryptionForm } from "../../pages/encryption/aes";
+import { TextEncoding } from "../codec/codec";
 import { FormLabel } from "../FormLabel";
+import { EncryptionMode } from "./Setting";
 
 const { TextArea } = Input;
 
@@ -227,7 +228,7 @@ const IvInput = () => {
 
 			form.setFieldsValue({ iv });
 		} catch (err: unknown) {
-			console.log(err);
+			error(err as string);
 		}
 	};
 

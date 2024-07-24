@@ -18,6 +18,7 @@ import { createStyles } from "antd-style";
 import { useForm, useWatch } from "antd/es/form/Form";
 import useMessage from "antd/es/message/useMessage";
 import { ReactNode, useEffect, useState } from "react";
+import { error } from "tauri-plugin-log-api";
 import {
 	fetchJwkeyAlgs,
 	fetchJwkeyOps,
@@ -273,13 +274,12 @@ const JWK = () => {
 		try {
 			let params = form.getFieldValue("params");
 			const data = { ...form.getFieldsValue(true), ...params };
-			console.log(data);
 			const c = await invoke<string>("generate_jwk", {
 				data,
 			});
 			setContent(c);
-		} catch (e) {
-			console.log(e);
+		} catch (err) {
+			error(err as string);
 		}
 	};
 	const copiedContent = async () => {

@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api";
 import { FormInstance, SelectProps } from "antd";
+import { error } from "tauri-plugin-log-api";
 import { fetchEdwardsCuveNames } from "../../api/edwards";
 import { TextEncoding } from "../codec/codec";
 import { PkcsFormat, PkcsFormats } from "../converter/converter";
@@ -21,8 +22,8 @@ export const getEdwardsCurveNames = async (): Promise<
 			label: curveName,
 			value: curveName,
 		}));
-	} catch (error) {
-		console.log("load edwards curve name failed");
+	} catch (err) {
+		error(("load edwards curve name failed" + err) as string);
 	}
 };
 
@@ -42,8 +43,8 @@ export const deriveEdwardsKey = async (
 			...pkcs,
 		});
 		form.setFieldsValue({ publicKey });
-	} catch (error) {
-		console.log(error);
+	} catch (err) {
+		error(err as string);
 	}
 	setGenerating(false);
 };
@@ -73,6 +74,6 @@ export const generateEdwardsKey = async (form: FormInstance) => {
 			},
 		});
 	} catch (err) {
-		console.log(err);
+		error(err as string);
 	}
 };

@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api";
 import { FormInstance, SelectProps } from "antd";
+import { error } from "tauri-plugin-log-api";
 import { fetchCurveNames } from "../../api/ecc";
 import { TextEncoding } from "../codec/codec";
 import { PkcsFormat, PkcsFormats } from "../converter/converter";
@@ -21,7 +22,7 @@ export const getEccCurveNames = async (): Promise<SelectProps["options"]> => {
 		}));
 		return formattedCurveNames;
 	} catch (e) {
-		console.log("ecc cuvename load failed", e);
+		error(("ecc cuvename load failed" + e) as string);
 	}
 };
 
@@ -42,8 +43,8 @@ export const deriveEccKey = async (
 			...pkcs,
 		});
 		form.setFieldsValue({ publicKey });
-	} catch (error) {
-		console.log(error);
+	} catch (err) {
+		error(err as string);
 	}
 	setGenerating(false);
 };
@@ -73,6 +74,6 @@ export const generateEccKey = async (form: FormInstance) => {
 			},
 		});
 	} catch (err) {
-		console.log(err);
+		error(err as string);
 	}
 };

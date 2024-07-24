@@ -5,6 +5,7 @@ import TextArea, { TextAreaProps } from "antd/es/input/TextArea";
 import { writeText } from "@tauri-apps/api/clipboard";
 import useMessage from "antd/es/message/useMessage";
 import { useEffect, useState } from "react";
+import { error } from "tauri-plugin-log-api";
 import Collapse from "../../components/Collapse";
 import { FormLabel } from "../../components/FormLabel";
 import { TextEncoding } from "../../components/codec/codec";
@@ -128,7 +129,6 @@ const RsaEncryptionInner = ({ form }: { form: FormInstance }) => {
 			const key = form.getFieldValue(
 				!forEncryption ? "privateKey" : "publicKey"
 			);
-			console.log("key", key);
 
 			const keyInfo = await parseRsaKey(key);
 			const output = await invoke<string>("crypto_rsa", {
@@ -145,8 +145,8 @@ const RsaEncryptionInner = ({ form }: { form: FormInstance }) => {
 				await writeText(output);
 				msg.success("copied output");
 			}
-		} catch (error) {
-			console.log(error);
+		} catch (err) {
+			error(err as string);
 		}
 	};
 
