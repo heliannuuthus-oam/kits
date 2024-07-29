@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api";
+import { writeText } from "@tauri-apps/api/clipboard";
 import {
 	Button,
 	Flex,
@@ -9,13 +10,13 @@ import {
 	Tabs,
 	message,
 } from "antd";
+import { createStyles } from "antd-style";
+import { error } from "tauri-plugin-log-api";
 import { AesEncryptionForm } from "../../pages/encryption/aes";
+import Collapse from "../Collapse";
 import { textEncodings } from "../codec/codec";
 import { TextEncodingSelect } from "../converter/TextEncodingSelect";
 import { textEncodingConverter } from "../converter/converter";
-import { createStyles } from "antd-style";
-import { writeText } from "@tauri-apps/api/clipboard";
-import Collapse from "../Collapse";
 const useStyles = createStyles(({ css }) => ({
 	container: css`
 		.ant-tabs-nav-list {
@@ -136,7 +137,7 @@ const AesSettingInner = () => {
 			}
 		} catch (err: unknown) {
 			form.setFieldsValue({ output: "" });
-			console.log(err);
+			error(err as string);
 		}
 	};
 

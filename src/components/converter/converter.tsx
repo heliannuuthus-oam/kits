@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api";
 import { RadioGroupProps, SelectProps } from "antd";
+import { info } from "tauri-plugin-log-api";
 import { TextEncoding } from "../codec/codec";
 
 export abstract class Converter<T> {
@@ -225,7 +226,11 @@ export class EccEncodingConverter extends Converter<PkcsEncodingProps> {
 	): Promise<string[]> {
 		const curveName =
 			(params?.["curveName"] as EccCurveName) || EccCurveName.Secp256k1;
-		console.log(params);
+		info("ec encoding", {
+			keyValues: {
+				params: JSON.stringify(params),
+			},
+		});
 		return await invoke<string[]>("transfer_ecc_key", {
 			curveName,
 			privateKey,
@@ -247,7 +252,11 @@ export class EdwardsEncodingConverter extends Converter<PkcsEncodingProps> {
 		const curveName =
 			(params?.["curveName"] as EdwardsCurveName) ||
 			EdwardsCurveName.Curve25519;
-		console.log(params);
+		info("edwards encoding", {
+			keyValues: {
+				params: JSON.stringify(params),
+			},
+		});
 		return await invoke<string[]>("transfer_edwards_key", {
 			curveName,
 			privateKey,
@@ -266,7 +275,6 @@ export class TextEncodingConverter extends Converter<TextEncoding> {
 		to: TextEncoding,
 		_?: Record<string, unknown>
 	): Promise<string[]> {
-		console.log(privateKey, from, to);
 		return await invoke<string[]>("convert_encoding", {
 			input: privateKey,
 			from,

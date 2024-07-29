@@ -3,6 +3,7 @@
 #![feature(let_chains)]
 use anyhow::Context;
 use errors::Result;
+use tauri_plugin_log::{fern::colors::ColoredLevelConfig, LogTarget};
 use tracing_subscriber::fmt::writer::MakeWriterExt;
 
 pub mod codec;
@@ -33,6 +34,16 @@ fn main() -> Result<()> {
         .context("initial tracing subscriber failed")?;
 
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::default()
+                .targets([
+                    LogTarget::LogDir,
+                    LogTarget::Stdout,
+                    LogTarget::Webview,
+                ])
+                .with_colors(ColoredLevelConfig::default())
+                .build(),
+        )
         .invoke_handler(tauri::generate_handler![
             // key generator
             crypto::aes::generate_aes,

@@ -1,5 +1,6 @@
 import { Select, message } from "antd";
 import { ForwardedRef, forwardRef, useState } from "react";
+import { error } from "tauri-plugin-log-api";
 import { TextEncoding } from "../codec/codec";
 import {
 	ConvertRef,
@@ -46,8 +47,8 @@ function ConvertSelectInner<T extends PkcsFormat>(
 
 			onChange?.(val);
 		} catch (err) {
-			messageApi.warning("error: " + err);
-			console.log(err);
+			messageApi.warning(err as string);
+			error(err as string);
 		}
 	};
 

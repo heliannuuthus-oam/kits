@@ -48,7 +48,7 @@ importers:
         version: 6.1.8(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       tauri-plugin-log-api:
         specifier: github:tauri-apps/tauri-plugin-log#v1
-        version: https://codeload.github.com/tauri-apps/tauri-plugin-log/tar.gz/db7255ca2e07fc4d3e6cc5d93f9ccfceacb28901
+        version: https://codeload.github.com/tauri-apps/tauri-plugin-log/tar.gz/2bb26e22f7f7b4f164bad02f0ae4085796f77fff
     devDependencies:
       "@nabla/vite-plugin-eslint":
         specifier: ^2.0.4
@@ -1101,6 +1101,13 @@ packages:
     resolution:
       {
         integrity: sha512-zxnDjHHKjOsrIzZm6nO5Xapb/BxqUq1tc7cGkFXsFkGTsSWgCPH1D8mm0XS9weJY2OaR73I3k3S+b7eSzJDfqA==,
+      }
+    engines: { node: ">= 14.6.0", npm: ">= 6.6.0", yarn: ">= 1.19.1" }
+
+  "@tauri-apps/api@1.6.0":
+    resolution:
+      {
+        integrity: sha512-rqI++FWClU5I2UBp4HXFvl+sBWkdigBkxnpJDQUWttNyG7IZP4FwQGhTNL5EOw0vI8i6eSAJ5frLqO7n7jbJdg==,
       }
     engines: { node: ">= 14.6.0", npm: ">= 6.6.0", yarn: ">= 1.19.1" }
 
@@ -4069,10 +4076,10 @@ packages:
       }
     engines: { node: ^14.18.0 || >=16.0.0 }
 
-  tauri-plugin-log-api@https://codeload.github.com/tauri-apps/tauri-plugin-log/tar.gz/db7255ca2e07fc4d3e6cc5d93f9ccfceacb28901:
+  tauri-plugin-log-api@https://codeload.github.com/tauri-apps/tauri-plugin-log/tar.gz/2bb26e22f7f7b4f164bad02f0ae4085796f77fff:
     resolution:
       {
-        tarball: https://codeload.github.com/tauri-apps/tauri-plugin-log/tar.gz/db7255ca2e07fc4d3e6cc5d93f9ccfceacb28901,
+        tarball: https://codeload.github.com/tauri-apps/tauri-plugin-log/tar.gz/2bb26e22f7f7b4f164bad02f0ae4085796f77fff,
       }
     version: 0.0.0
 
@@ -4988,6 +4995,8 @@ snapshots:
     optional: true
 
   "@tauri-apps/api@1.5.3": {}
+
+  "@tauri-apps/api@1.6.0": {}
 
   "@tauri-apps/cli-darwin-arm64@1.5.11":
     optional: true
@@ -7176,9 +7185,9 @@ snapshots:
       "@pkgr/core": 0.1.1
       tslib: 2.6.2
 
-  tauri-plugin-log-api@https://codeload.github.com/tauri-apps/tauri-plugin-log/tar.gz/db7255ca2e07fc4d3e6cc5d93f9ccfceacb28901:
+  tauri-plugin-log-api@https://codeload.github.com/tauri-apps/tauri-plugin-log/tar.gz/2bb26e22f7f7b4f164bad02f0ae4085796f77fff:
     dependencies:
-      "@tauri-apps/api": 1.5.3
+      "@tauri-apps/api": 1.6.0
 
   text-table@0.2.0: {}
 

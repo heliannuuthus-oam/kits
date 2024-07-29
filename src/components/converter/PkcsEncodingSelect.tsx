@@ -1,5 +1,6 @@
 import { Select, message } from "antd";
 import { ForwardedRef, forwardRef, useState } from "react";
+import { error } from "tauri-plugin-log-api";
 import { TextEncoding } from "../codec/codec";
 import {
 	ConvertRef,
@@ -49,7 +50,7 @@ function ConvertSelectInner(
 			onChange?.(val);
 		} catch (err) {
 			messageApi.warning("error: " + err);
-			console.log(err);
+			error(err as string);
 		}
 	};
 

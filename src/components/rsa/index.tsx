@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api";
 import { FormInstance } from "antd";
+import { error } from "tauri-plugin-log-api";
 import { TextEncoding } from "../codec/codec";
 import { PkcsFormat, PkcsFormats } from "../converter/converter";
 
@@ -29,13 +30,12 @@ export const deriveRsaKey = async (
 			...pkcs,
 		});
 		form.setFieldsValue({ publicKey });
-	} catch (error) {
-		console.log(error);
+	} catch (err) {
+		error(err as string);
 	}
 	setGenerating(false);
 };
 export const generateRsaKey = async (form: FormInstance) => {
-	console.log(form.getFieldsValue(["rsa"]));
 	try {
 		const {
 			keySize,
@@ -60,6 +60,6 @@ export const generateRsaKey = async (form: FormInstance) => {
 			},
 		});
 	} catch (err) {
-		console.log(err);
+		error(err as string);
 	}
 };
